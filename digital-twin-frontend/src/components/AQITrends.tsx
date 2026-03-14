@@ -88,9 +88,24 @@ export function AQITrends() {
             loadingText="Computing AI Forecast..."
             className="h-full"
             footer={
-                <p className="text-xs text-white/40 text-center mt-4 font-mono">
-                    Analysis based on historical sensor data + predictive AI modeling.
-                </p>
+                <div className="mt-4">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 mb-4">
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
+                            What This Shows
+                        </div>
+                        <p className="text-sm text-white/65 leading-relaxed">
+                            The blue line tracks recent observed AQI levels, while the green dashed line extends
+                            that pattern into the forecast period using the model&apos;s prediction window.
+                        </p>
+                        <p className="text-xs text-white/45 leading-relaxed mt-2">
+                            Spikes usually reflect episodic pollution events, weather trapping, or seasonal combustion.
+                            Sustained drops indicate cleaner background conditions rather than one-off relief.
+                        </p>
+                    </div>
+                    <p className="text-xs text-white/40 text-center font-mono">
+                        Analysis based on historical sensor data + predictive AI modeling.
+                    </p>
+                </div>
             }
         >
             <div className="h-[300px] w-full">

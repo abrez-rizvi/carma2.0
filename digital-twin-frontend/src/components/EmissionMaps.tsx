@@ -11,15 +11,16 @@ export function EmissionMaps() {
         setIsLoading(true);
     };
 
-    const heatmapCaption = 'Grid-based CO₂ concentration analysis across Delhi.';
+    const heatmapCaption =
+        'Grid-based CO2 load distribution across Delhi. Brighter cells represent stronger modeled concentration, helping reveal broad corridors and persistent clusters rather than individual emitters.';
     const hotspotsCaption = selectedYear
-        ? `Projected CO₂ sources based on ${selectedYear} emission forecasts.`
-        : 'Sector-wise emission sources: Industry, Transport, Power, Residential.';
+        ? `Projected source hotspots for ${selectedYear}. Colored markers show which sectors are expected to dominate emissions at each location.`
+        : 'Source-level emission markers by sector. Use the colors to distinguish industry, transport, power, residential, aviation, and commercial contributors.';
 
     return (
         <div className='flex gap-4'>
             <MapPanelCard
-                title="CO₂ Emission Heatmap"
+                title="CO2 Emission Heatmap"
                 icon={<span role="img" aria-label="map">🌡️</span>}
                 imageSrc={`${API_BASE_URL}/api/emission-map/heatmap.png`}
                 imageAlt="CO2 Emission Heatmap"
@@ -57,7 +58,6 @@ export function EmissionMaps() {
                 loadingText="Generating forecast..."
             />
 
-            {/* Legend */}
             <div className="fixed bottom-4 left-4 bg-black/80 backdrop-blur-sm border border-white/10 rounded-lg p-3 text-xs z-50 hidden lg:block">
                 <div className="font-bold text-white mb-2">Emission Sources</div>
                 <div className="space-y-1 text-white/70">

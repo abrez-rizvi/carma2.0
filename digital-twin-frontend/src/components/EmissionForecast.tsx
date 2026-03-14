@@ -98,15 +98,31 @@ export function EmissionForecast() {
     );
 
     const footer = data.length > 0 ? (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-6 text-center">
-            {Object.keys(data[0].sectors).map((sector) => (
-                <div key={sector} className="bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
-                    <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">{sector.replace('_', ' ')}</div>
-                    <div className="text-sm font-bold text-white">
-                        {Math.round(data[data.length - 1].sectors[sector as keyof ForecastPoint['sectors']])} kt
-                    </div>
+        <div className="mt-6">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 mb-4">
+                <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">
+                    What This Shows
                 </div>
-            ))}
+                <p className="text-sm text-white/65 leading-relaxed">
+                    This chart compares recent measured CO2 emissions with the model&apos;s near-term forecast.
+                    The pink segment is the observed historical trend, while the green segment projects how
+                    total city emissions are expected to evolve over the selected forecast window.
+                </p>
+                <p className="text-xs text-white/45 leading-relaxed mt-2">
+                    Use it to spot whether emissions are stabilizing, drifting upward, or falling after short-term
+                    shocks. The sector cards below show the latest end-of-window contribution from each source.
+                </p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
+                {Object.keys(data[0].sectors).map((sector) => (
+                    <div key={sector} className="bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                        <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">{sector.replace('_', ' ')}</div>
+                        <div className="text-sm font-bold text-white">
+                            {Math.round(data[data.length - 1].sectors[sector as keyof ForecastPoint['sectors']])} kt
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     ) : undefined;
 

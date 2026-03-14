@@ -11,10 +11,10 @@ export function AQIMaps() {
         setIsLoading(true);
     };
 
-    const heatmapCaption = 'Clipped grid analysis via Folium & Geomapping.';
+    const heatmapCaption = 'Grid-based AQI intensity map across Delhi. Darker red cells indicate broader zones of persistently poor air quality, making it useful for spotting spatial concentration rather than single-station spikes.';
     const hotspotsCaption = selectedYear
-        ? `Projected AQI based on ${selectedYear} emission forecasts.`
-        : 'Live sensor readings from 40+ stations.';
+        ? `Station-level AQI hotspot forecast for ${selectedYear}. Larger and redder markers indicate more severe expected pollution at specific monitoring points.`
+        : 'Live station-level AQI readings from 40+ sensors. Marker color and value show where pollution is currently most concentrated.';
 
     return (
         <div className='flex gap-4'>

@@ -350,7 +350,7 @@ def generate_policy():
             return jsonify({'error': 'Missing research_query'}), 400
         
         # Retrieve research
-        research_chunks = policy_engine.query_research(query, k=3)
+        research_chunks, is_direct_query = policy_engine.query_research(query, k=3)
         
         # Get graph context for validation
         graph_context = data.get('graph_context')
@@ -361,7 +361,12 @@ def generate_policy():
             print("Using dynamic graph context from frontend")
         
         # Extract policy via LLM
-        policy = policy_engine.extract_policy(research_chunks, graph_context, user_query=query)
+        policy = policy_engine.extract_policy(
+            research_chunks,
+            graph_context,
+            is_direct_query=is_direct_query,
+            user_query=query
+        )
         
         return jsonify({
             'status': 'success',

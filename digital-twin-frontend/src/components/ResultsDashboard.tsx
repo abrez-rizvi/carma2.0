@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useGlobalState } from "../context/GlobalStateContext";
 import { Reveal } from "./Reveal";
 import {
@@ -14,7 +15,6 @@ import {
   Save,
 } from "lucide-react";
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -26,28 +26,132 @@ import {
   ComposedChart,
 } from "recharts";
 
-/** Generate mock forecast data for visualization */
-function generateForecastData(
+interface ForecastRow {
+  date: string;
+  emission: number;
+  sectors: {
+    Aviation: number;
+    Ground_Transport: number;
+    Industry: number;
+    Power: number;
+    Residential: number;
+  };
+}
+
+interface ForecastChartPoint {
+  label: string;
+  baseline: number;
+  withPolicy: number;
+  monthTick: string;
+}
+
+function getEffectiveForecastYear(targetYear: number): number {
+  if (targetYear <= 2026) return 2026;
+  if (targetYear >= 2028) return 2028;
+  return targetYear;
+}
+
+function generateFallbackForecastData(
   co2Reduction: number,
-  months: number = 12
-): Array<{ month: string; baseline: number; withPolicy: number }> {
-  const data = [];
-  const now = new Date();
-  for (let i = 0; i < months; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const monthStr = d.toLocaleDateString("en-US", {
+  targetYear: number
+): ForecastChartPoint[] {
+  const yearDrift = targetYear - 2026;
+  return Array.from({ length: 18 }, (_, index) => {
+    const date = new Date(targetYear, 0, 1 + index * 20);
+    const label = date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+    });
+    const monthTick = date.toLocaleDateString("en-US", {
       month: "short",
       year: "2-digit",
     });
-    const baseline = 35 + Math.sin(i * 0.5) * 8 + Math.random() * 4;
-    const withPol = baseline * (1 - co2Reduction / 100);
-    data.push({
-      month: monthStr,
+    const seasonal = Math.sin(index * 0.55) * 4.5;
+    const shortTermVariation = Math.cos(index * 1.35) * 1.2;
+    const baseline = 34 + yearDrift * 2.4 + seasonal + shortTermVariation + index * 0.14;
+    const withPolicy = baseline * (1 - co2Reduction / 100);
+
+    return {
+      label,
       baseline: parseFloat(baseline.toFixed(2)),
-      withPolicy: parseFloat(withPol.toFixed(2)),
-    });
+      withPolicy: parseFloat(withPolicy.toFixed(2)),
+      monthTick,
+    };
+  });
+}
+
+function buildForecastChartData(
+  rows: ForecastRow[],
+  sectorReductions: Record<string, number>
+): ForecastChartPoint[] {
+  const sampledRows = rows.filter((_, index) => index % 14 === 0 || index === rows.length - 1);
+
+  return sampledRows.map((row) => {
+    const date = new Date(row.date);
+    const withPolicyEmission = Object.entries(row.sectors).reduce(
+      (sum, [sector, value]) => {
+        const reductionPct = sectorReductions[sector] ?? 0;
+        const adjustedValue = value * (1 - reductionPct / 100);
+        return sum + adjustedValue;
+      },
+      0
+    );
+
+    return {
+      label: date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+      }),
+      monthTick: date.toLocaleDateString("en-US", {
+        month: "short",
+        year: "2-digit",
+      }),
+      baseline: parseFloat(row.emission.toFixed(2)),
+      withPolicy: parseFloat(withPolicyEmission.toFixed(2)),
+    };
+  });
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getHealthProjection(
+  aqiImprovement: number,
+  co2Reduction: number,
+  healthBenefit: number
+) {
+  const respiratorySlowdown = clamp(aqiImprovement * 0.95, 3, 18);
+  const copdSlowdown = clamp(aqiImprovement * 0.72, 2, 14);
+  const asthmaReduction = clamp(aqiImprovement * 1.45, 5, 28);
+  const prematureMortalityReduction = clamp(
+    aqiImprovement * 0.75 + co2Reduction * 0.2,
+    3,
+    20
+  );
+  const protectedHealthyYears = Math.round(healthBenefit * 10 + aqiImprovement * 75);
+
+  let outlook =
+    "Cleaner air begins to reduce the background stress on lungs and the cardiovascular system, but the full public-health dividend takes time to accumulate.";
+
+  if (aqiImprovement >= 10) {
+    outlook =
+      "This scenario is strong enough to shift the city toward a meaningfully healthier long-run baseline, especially for children, older adults, and people with pre-existing respiratory disease.";
   }
-  return data;
+
+  if (aqiImprovement >= 18) {
+    outlook =
+      "This level of air-quality improvement can materially change long-term population health, slowing chronic respiratory decline and reducing repeated pollution-driven illness over multiple years.";
+  }
+
+  return {
+    respiratorySlowdown,
+    copdSlowdown,
+    asthmaReduction,
+    prematureMortalityReduction,
+    protectedHealthyYears,
+    outlook,
+  };
 }
 
 interface ResultsDashboardProps {
@@ -55,7 +159,66 @@ interface ResultsDashboardProps {
 }
 
 export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
-  const { latestResult, isSimulating } = useGlobalState();
+  const { latestResult, isSimulating, timeHorizon } = useGlobalState();
+  const [forecastData, setForecastData] = useState<ForecastChartPoint[]>([]);
+  const [forecastYear, setForecastYear] = useState<number>(
+    getEffectiveForecastYear(timeHorizon[1])
+  );
+  const [isUsingNearestYear, setIsUsingNearestYear] = useState(false);
+  const selectedForecastYear = getEffectiveForecastYear(timeHorizon[1]);
+  const metrics = latestResult?.metrics;
+
+  useEffect(() => {
+    if (!metrics) {
+      setForecastData([]);
+      setForecastYear(selectedForecastYear);
+      setIsUsingNearestYear(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadForecast = async () => {
+      try {
+        const response = await fetch(
+          `/api/emission/forecast/year?year=${timeHorizon[1]}`,
+          { cache: "no-store" }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Forecast request failed (${response.status})`);
+        }
+
+        const result = await response.json();
+        const rows = Array.isArray(result.rows) ? (result.rows as ForecastRow[]) : [];
+        const chartForecast =
+          rows.length > 0
+            ? buildForecastChartData(rows, metrics.sectorEmissions)
+            : generateFallbackForecastData(metrics.co2Reduction, selectedForecastYear);
+
+        if (!isCancelled) {
+          setForecastData(chartForecast);
+          setForecastYear(result.year ?? selectedForecastYear);
+          setIsUsingNearestYear(Boolean(result.usedNearestYear));
+        }
+      } catch (error) {
+        console.error("Results forecast error:", error);
+        if (!isCancelled) {
+          setForecastData(
+            generateFallbackForecastData(metrics.co2Reduction, selectedForecastYear)
+          );
+          setForecastYear(selectedForecastYear);
+          setIsUsingNearestYear(timeHorizon[1] !== selectedForecastYear);
+        }
+      }
+    };
+
+    loadForecast();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [metrics, selectedForecastYear, timeHorizon]);
 
   if (isSimulating) {
     return (
@@ -109,8 +272,15 @@ export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
     );
   }
 
-  const { metrics } = latestResult;
-  const forecastData = generateForecastData(metrics.co2Reduction);
+  if (!metrics) {
+    return null;
+  }
+
+  const healthProjection = getHealthProjection(
+    metrics.aqiImprovement,
+    metrics.co2Reduction,
+    metrics.healthBenefit
+  );
 
   const chartTooltipStyle: React.CSSProperties = {
     backgroundColor: "rgba(15, 5, 24, 0.95)",
@@ -212,12 +382,100 @@ export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
           </div>
         </Reveal>
 
+        <Reveal delay={180}>
+          <div className="glass-panel p-6 mb-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-2xl">
+                <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
+                  Long-Run Health Outlook
+                </div>
+                <h3 className="text-xl md:text-2xl font-semibold text-white mb-3">
+                  Improved air quality compounds into slower disease growth across the city
+                </h3>
+                <p className="text-sm md:text-base text-white/70 leading-relaxed mb-4">
+                  {healthProjection.outlook}
+                </p>
+                <p className="text-xs text-white/45 leading-relaxed">
+                  These are scenario-based estimates inferred from the simulated AQI improvement and emissions decline. Real outcomes depend on policy enforcement, exposure duration, population density, and access to care.
+                </p>
+              </div>
+
+              <div className="min-w-[220px] rounded-2xl border border-emerald-500/20 bg-emerald-500/8 p-5">
+                <div className="text-[11px] uppercase tracking-[0.24em] text-emerald-300/60 mb-2">
+                  Healthy Years Protected
+                </div>
+                <div className="text-3xl font-bold text-emerald-300 mb-2">
+                  {healthProjection.protectedHealthyYears.toLocaleString()}+
+                </div>
+                <p className="text-sm text-emerald-100/70">
+                  cumulative healthy life-years preserved over the long run if the scenario remains in place
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+              <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/8 p-4">
+                <div className="text-[11px] uppercase tracking-wider text-cyan-300/60 mb-2">
+                  Chronic Lung Disease Growth
+                </div>
+                <div className="text-2xl font-bold text-cyan-300 mb-1">
+                  {healthProjection.respiratorySlowdown.toFixed(1)}% slower
+                </div>
+                <p className="text-sm text-white/60">
+                  expected pace of new long-term respiratory burden linked to dirty-air exposure
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-sky-500/20 bg-sky-500/8 p-4">
+                <div className="text-[11px] uppercase tracking-wider text-sky-300/60 mb-2">
+                  COPD Progression
+                </div>
+                <div className="text-2xl font-bold text-sky-300 mb-1">
+                  {healthProjection.copdSlowdown.toFixed(1)}% slower
+                </div>
+                <p className="text-sm text-white/60">
+                  deterioration among high-exposure residents and vulnerable older adults
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/8 p-4">
+                <div className="text-[11px] uppercase tracking-wider text-rose-300/60 mb-2">
+                  Asthma Flare-Ups
+                </div>
+                <div className="text-2xl font-bold text-rose-300 mb-1">
+                  {healthProjection.asthmaReduction.toFixed(1)}% fewer
+                </div>
+                <p className="text-sm text-white/60">
+                  pollution-triggered episodes, especially for children and commuters
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-violet-500/20 bg-violet-500/8 p-4">
+                <div className="text-[11px] uppercase tracking-wider text-violet-300/60 mb-2">
+                  Premature Mortality Risk
+                </div>
+                <div className="text-2xl font-bold text-violet-300 mb-1">
+                  {healthProjection.prematureMortalityReduction.toFixed(1)}% lower
+                </div>
+                <p className="text-sm text-white/60">
+                  long-run exposure-related risk from combined air-quality and emissions gains
+                </p>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
         {/* Forecast Chart */}
         <Reveal delay={200}>
           <div className="glass-panel p-6 mb-8">
             <div className="text-xs text-white/40 uppercase tracking-wider mb-4 flex items-center gap-2">
-              📈 Emission Forecast Comparison
-              <span className="text-blue-400 font-bold">{new Date().getFullYear()}</span>
+              Emission Forecast Comparison
+              <span className="text-blue-400 font-bold">{forecastYear}</span>
+              {isUsingNearestYear && (
+                <span className="text-[10px] text-amber-300/70 normal-case tracking-normal">
+                  using nearest available forecast year for the selected horizon
+                </span>
+              )}
             </div>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -230,11 +488,12 @@ export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis
-                    dataKey="month"
+                    dataKey="label"
                     stroke="rgba(255,255,255,0.4)"
                     tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
                     tickLine={{ stroke: "rgba(255,255,255,0.1)" }}
                     axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                    minTickGap={18}
                   />
                   <YAxis
                     stroke="rgba(255,255,255,0.4)"
@@ -242,13 +501,13 @@ export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
                     tickLine={{ stroke: "rgba(255,255,255,0.1)" }}
                     axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
                     domain={["auto", "auto"]}
-                    label={{ value: "kt CO₂/month", angle: -90, position: "insideLeft", fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    label={{ value: "kt CO₂/day (monthly avg.)", angle: -90, position: "insideLeft", fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
                   />
                   <Tooltip contentStyle={chartTooltipStyle} itemStyle={{ color: "#fff" }} />
                   <Legend wrapperStyle={{ paddingTop: "20px" }} />
-                  <Area type="monotone" dataKey="withPolicy" fill="url(#resultPolicyGrad)" stroke="transparent" legendType="none" />
-                  <Line type="monotone" dataKey="baseline" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Baseline (No Policy)" />
-                  <Line type="monotone" dataKey="withPolicy" stroke="#10b981" strokeWidth={3} dot={false} activeDot={{ r: 5, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }} name="With Policy" />
+                  <Area type="linear" dataKey="withPolicy" fill="url(#resultPolicyGrad)" stroke="transparent" legendType="none" />
+                  <Line type="linear" dataKey="baseline" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 2, fill: "#6b7280", strokeWidth: 0 }} name="Baseline (No Policy)" />
+                  <Line type="linear" dataKey="withPolicy" stroke="#10b981" strokeWidth={3} dot={{ r: 2.5, fill: "#10b981", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }} name="With Policy" />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>

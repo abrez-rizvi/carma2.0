@@ -118,15 +118,15 @@ export function MapPanelCard({
                     {hasError ? 'Failed to load image' : isLoading ? loadingText : 'Loading...'}
                 </div>
             </div>
-            <div className="flex justify-between items-center mt-4">
-                <p className="text-xs text-white/40">
+            <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <p className="text-xs text-white/40 leading-relaxed md:max-w-[78%]">
                     {caption}
                 </p>
                 <a
                     href={interactiveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs text-secondary hover:text-white transition-colors hover:underline flex items-center gap-1"
+                    className="text-xs text-secondary hover:text-white transition-colors hover:underline flex items-center gap-1 self-start shrink-0"
                 >
                     Interactive View &rarr;
                 </a>

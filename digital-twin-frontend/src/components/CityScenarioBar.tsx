@@ -3,7 +3,6 @@
 import { useGlobalState } from "../context/GlobalStateContext";
 import {
   MapPin,
-  Calendar,
   Zap,
   Play,
   Factory,
@@ -37,8 +36,6 @@ export function CityScenarioBar({ onRunSimulation }: CityScenarioBarProps) {
   const {
     selectedCity,
     setSelectedCity,
-    timeHorizon,
-    setTimeHorizon,
     activeSectors,
     toggleSector,
     isSimulating,
@@ -69,36 +66,6 @@ export function CityScenarioBar({ onRunSimulation }: CityScenarioBarProps) {
               <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 text-xs">
                 ▼
               </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div className="w-px h-8 bg-white/10 hidden md:block" />
-
-          {/* Time Horizon */}
-          <div className="flex items-center gap-3">
-            <Calendar className="w-4 h-4 text-cyan-400" />
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-white/40 font-mono">
-                {timeHorizon[0]}
-              </span>
-              <input
-                type="range"
-                min={2025}
-                max={2035}
-                value={timeHorizon[1]}
-                onChange={(e) =>
-                  setTimeHorizon([timeHorizon[0], parseInt(e.target.value)])
-                }
-                className="w-28 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
-                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400
-                  [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(6,182,212,0.6)]
-                  [&::-webkit-slider-thumb]:cursor-pointer"
-              />
-              <span className="text-xs text-white/40 font-mono">
-                {timeHorizon[1]}
-              </span>
             </div>
           </div>
 
