@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
@@ -17,8 +18,8 @@ const NAV_SECTIONS = [
   { id: "baseline", label: "Baseline", icon: BarChart3 },
   { id: "policy-lab", label: "Policy Lab", icon: FlaskConical },
   { id: "results", label: "Results", icon: BarChart },
-  { id: "comparison", label: "Compare", icon: GitCompare },
   { id: "maps", label: "Maps", icon: Map },
+  { id: "comparison", label: "Compare", icon: GitCompare },
 ];
 
 function scrollToSection(sectionId: string) {
@@ -30,6 +31,8 @@ function scrollToSection(sectionId: string) {
 
 export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+  const isHome = pathname === "/";
 
   return (
     <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
@@ -47,21 +50,30 @@ export function Navigation() {
             </div>
           </Link>
 
-          {/* Desktop Section Anchors */}
+          {/* Desktop Section Anchors or Back Button */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_SECTIONS.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => scrollToSection(section.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white/50 hover:text-white rounded-lg transition-colors hover:bg-white/5 group"
-                >
-                  <Icon className="w-4 h-4 text-white/40 group-hover:text-emerald-400 transition-colors" />
-                  {section.label}
-                </button>
-              );
-            })}
+            {isHome ? (
+              NAV_SECTIONS.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => scrollToSection(section.id)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm text-white/50 hover:text-white rounded-lg transition-colors hover:bg-white/5 group"
+                  >
+                    <Icon className="w-4 h-4 text-white/40 group-hover:text-emerald-400 transition-colors" />
+                    {section.label}
+                  </button>
+                );
+              })
+            ) : (
+              <Link
+                href="/"
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors border border-emerald-500/20"
+              >
+                Back to Dashboard
+              </Link>
+            )}
           </div>
 
           {/* Page Links (secondary) */}
@@ -97,22 +109,32 @@ export function Navigation() {
         {mobileOpen && (
           <div className="md:hidden py-4 border-t border-white/5 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-1">
-              {NAV_SECTIONS.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => {
-                      scrollToSection(section.id);
-                      setMobileOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
-                  >
-                    <Icon className="w-4 h-4" />
-                    {section.label}
-                  </button>
-                );
-              })}
+              {isHome ? (
+                NAV_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => {
+                        scrollToSection(section.id);
+                        setMobileOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                    >
+                      <Icon className="w-4 h-4" />
+                      {section.label}
+                    </button>
+                  );
+                })
+              ) : (
+                <Link
+                  href="/"
+                  onClick={() => setMobileOpen(false)}
+                  className="mx-4 my-2 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 shadow-lg rounded-xl transition-all border border-emerald-500/20"
+                >
+                  Back to Dashboard
+                </Link>
+              )}
               <div className="border-t border-white/5 pt-2 mt-2">
                 <Link
                   href="/solutions"

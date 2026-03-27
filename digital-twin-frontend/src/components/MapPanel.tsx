@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface MapPanelCardProps {
     title: string;
@@ -21,6 +21,7 @@ interface MapPanelCardProps {
     onRefresh: () => void;
     isLoading: boolean;
     loadingText?: string;
+    onLoadComplete?: () => void;
 }
 
 export function MapPanelCard({
@@ -35,24 +36,29 @@ export function MapPanelCard({
     onRefresh,
     isLoading,
     loadingText = 'Loading...',
+    onLoadComplete,
 }: MapPanelCardProps) {
-    const [imgKey, setImgKey] = useState(0);
+    const [refreshTimestamp, setRefreshTimestamp] = useState(0);
     const [hasError, setHasError] = useState(false);
     const [isImgLoaded, setIsImgLoaded] = useState(false);
 
-    const currentSrc = `${imageSrc}${imageSrc.includes('?') ? '&' : '?'}t=${imgKey}`;
+    // If the parent changes the base URL (dropdown), drop the refresh string so it loads nicely from cache
+    useEffect(() => {
+        setRefreshTimestamp(0);
+    }, [imageSrc]);
+
+    const currentSrc = `${imageSrc}${refreshTimestamp > 0 ? `${imageSrc.includes('?') ? '&' : '?'}t=${refreshTimestamp}&refresh=true` : ''}`;
 
     const handleRefresh = useCallback(() => {
         setHasError(false);
         setIsImgLoaded(false);
-        setImgKey(Date.now());
+        setRefreshTimestamp(Date.now());
         onRefresh();
     }, [onRefresh]);
 
     const handleYearChange = useCallback((year: string) => {
         setHasError(false);
         setIsImgLoaded(false);
-        setImgKey(Date.now());
         yearSelector?.onChange(year);
     }, [yearSelector]);
 
@@ -101,7 +107,7 @@ export function MapPanelCard({
             <div className="relative w-full aspect-video bg-black/40 rounded-2xl overflow-hidden border border-white/5 flex items-center justify-center group">
                 {!hasError && (
                     <img
-                        key={imgKey}
+                        key={currentSrc}
                         src={currentSrc}
                         alt={imageAlt}
                         className={`w-full h-full object-cover transition-all duration-700 ${isLoading ? 'opacity-50' : ''}`}
@@ -111,12 +117,10 @@ export function MapPanelCard({
                         }}
                         onLoad={() => {
                             setIsImgLoaded(true);
+                            onLoadComplete?.();
                         }}
                     />
                 )}
-                <div className={`absolute inset-0 pointer-events-none flex items-center justify-center text-white/30 ${isImgLoaded && !hasError ? '-z-10' : 'z-0'}`}>
-                    {hasError ? 'Failed to load image' : isLoading ? loadingText : 'Loading...'}
-                </div>
             </div>
             <div className="flex justify-between items-center mt-4">
                 <p className="text-xs text-white/40">

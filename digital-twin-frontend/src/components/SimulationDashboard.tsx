@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useGlobalState, type ScenarioResult } from "../context/GlobalStateContext";
+import { useSimulation, type ScenarioResult } from "../context/SimulationContext";
 import { CityScenarioBar } from "./CityScenarioBar";
 import { BaselineOverview } from "./BaselineOverview";
 import { SectorInterdependence } from "./SectorInterdependence";
@@ -436,7 +436,7 @@ export function SimulationDashboard() {
     addScenario,
     latestResult,
     simulationResults,
-  } = useGlobalState();
+  } = useSimulation();
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfProgress, setPdfProgress] = useState("");

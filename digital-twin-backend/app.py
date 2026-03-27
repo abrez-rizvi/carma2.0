@@ -60,12 +60,14 @@ MAP_IMAGE_PATH = HEATMAP_PATH
 @app.route('/api/aqi-map', methods=['GET'])
 def get_aqi_map_html():
     """Returns the Interactive Heatmap HTML (Default)"""
-    return generate_heatmap_html()
+    level = request.args.get('level', 'ward')
+    return generate_heatmap_html(level=level)
 
 @app.route('/api/aqi-map/heatmap', methods=['GET'])
 def get_heatmap_html():
     """Explicit endpoint for Heatmap HTML"""
-    return generate_heatmap_html()
+    level = request.args.get('level', 'ward')
+    return generate_heatmap_html(level=level)
 
 @app.route('/api/aqi-map/hotspots', methods=['GET'])
 def get_hotspots_html():
@@ -87,13 +89,16 @@ def get_aqi_map_png():
 def get_heatmap_png():
     """Returns the Heatmap Grid PNG"""
     from flask import send_file
+    level = request.args.get('level', 'ward')
+    
+    cache_path = os.path.join(STATIC_DIR, f'aqi_map_heatmap_{level}.png')
     
     # Simple caching/regeneration logic
-    if not os.path.exists(HEATMAP_PATH) or request.args.get('refresh'):
-        html = generate_heatmap_html()
-        render_map_to_png(html, HEATMAP_PATH)
+    if not os.path.exists(cache_path) or request.args.get('refresh'):
+        html = generate_heatmap_html(level=level)
+        render_map_to_png(html, cache_path)
         
-    return send_file(HEATMAP_PATH, mimetype='image/png')
+    return send_file(cache_path, mimetype='image/png')
 
 @app.route('/api/aqi-map/hotspots.png', methods=['GET'])
 def get_hotspots_png():
@@ -127,12 +132,14 @@ def get_hotspots_png():
 @app.route('/api/emission-map', methods=['GET'])
 def get_emission_map_html():
     """Returns the Interactive Emission Heatmap HTML (Default)"""
-    return generate_emission_heatmap_html()
+    level = request.args.get('level', 'ward')
+    return generate_emission_heatmap_html(level=level)
 
 @app.route('/api/emission-map/heatmap', methods=['GET'])
 def get_emission_heatmap_html():
     """Explicit endpoint for Emission Heatmap HTML"""
-    return generate_emission_heatmap_html()
+    level = request.args.get('level', 'ward')
+    return generate_emission_heatmap_html(level=level)
 
 @app.route('/api/emission-map/hotspots', methods=['GET'])
 def get_emission_hotspots_html():
@@ -148,12 +155,14 @@ def get_emission_hotspots_html():
 def get_emission_heatmap_png():
     """Returns the Emission Heatmap Grid PNG"""
     from flask import send_file
+    level = request.args.get('level', 'ward')
+    cache_path = os.path.join(STATIC_DIR, f'emission_map_heatmap_{level}.png')
     
-    if not os.path.exists(EMISSION_HEATMAP_PATH) or request.args.get('refresh'):
-        html = generate_emission_heatmap_html()
-        render_emission_map_to_png(html, EMISSION_HEATMAP_PATH)
+    if not os.path.exists(cache_path) or request.args.get('refresh'):
+        html = generate_emission_heatmap_html(level=level)
+        render_emission_map_to_png(html, cache_path)
         
-    return send_file(EMISSION_HEATMAP_PATH, mimetype='image/png')
+    return send_file(cache_path, mimetype='image/png')
 
 @app.route('/api/emission-map/hotspots.png', methods=['GET'])
 def get_emission_hotspots_png():
@@ -189,26 +198,29 @@ def get_sector_heatmap_html():
     from emission_map import generate_sector_heatmap_html
     
     sector = request.args.get('sector', 'Industry')
+    level = request.args.get('level', 'ward')
     if sector not in VALID_SECTORS:
         sector = 'Industry'
     
-    return generate_sector_heatmap_html(sector)
+    return generate_sector_heatmap_html(sector, level=level)
 
 @app.route('/api/emission-map/sector/heatmap.png', methods=['GET'])
 def get_sector_heatmap_png():
     """Returns sector-specific emission heatmap PNG."""
     from flask import send_file
-    from emission_map import generate_sector_heatmap_html, render_map_to_png
+    from emission_map import generate_sector_heatmap_html
     
     sector = request.args.get('sector', 'Industry')
+    level = request.args.get('level', 'ward')
     if sector not in VALID_SECTORS:
         sector = 'Industry'
+        
+    cache_path = os.path.join(STATIC_DIR, f'emission_sector_heatmap_{sector}_{level}.png')
     
-    cache_path = os.path.join(STATIC_DIR, f'sector_heatmap_{sector.lower()}.png')
     if not os.path.exists(cache_path) or request.args.get('refresh'):
-        html = generate_sector_heatmap_html(sector)
-        render_map_to_png(html, cache_path)
-    
+        html = generate_sector_heatmap_html(sector, level=level)
+        render_emission_map_to_png(html, cache_path)
+        
     return send_file(cache_path, mimetype='image/png')
 
 @app.route('/api/emission-map/sector/hotspots', methods=['GET'])

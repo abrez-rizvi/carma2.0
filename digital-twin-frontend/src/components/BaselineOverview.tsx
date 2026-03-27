@@ -1,6 +1,6 @@
 "use client";
 
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useAQI } from "../context/AQIContext";
 import { AQITrends } from "./AQITrends";
 import { HistoricEmissions } from "./HistoricEmissions";
 import { EmissionForecast } from "./EmissionForecast";
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 export function BaselineOverview() {
-  const { aqiData } = useGlobalState();
+  const { aqiData } = useAQI();
   const currentAQI = aqiData?.aqi ?? 0;
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ReactFlow,
   useNodesState,
@@ -25,7 +25,7 @@ const nodeTypes: NodeTypes = {
   causal: CausalNode as NodeTypes["causal"],
 };
 
-export function SectorInterdependence() {
+export const SectorInterdependence = React.memo(function SectorInterdependence() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [impactMessage, setImpactMessage] = useState(
@@ -172,4 +172,4 @@ export function SectorInterdependence() {
       </div>
     </section>
   );
-}
+});

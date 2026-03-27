@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useGlobalState } from "../context/GlobalStateContext";
+import { useSimulation } from "../context/SimulationContext";
 import { Reveal } from "./Reveal";
 import {
   SlidersHorizontal,
@@ -411,7 +411,7 @@ const ACCENT_CLASSES: Record<string, string> = {
 // ============================================================================
 
 export function PolicyLab() {
-  const { policyValues, updatePolicyValue, setPolicyValues } = useGlobalState();
+  const { policyValues, updatePolicyValue, setPolicyValues } = useSimulation();
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
   const impacts = calculateEstimatedImpacts(policyValues);
