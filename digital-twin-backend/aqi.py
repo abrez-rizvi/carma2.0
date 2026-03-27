@@ -2,7 +2,6 @@ import requests
 import os
 from config import AMBEE_DATA_KEY
 
-
 def get_live_aqi(lat: float = 28.7041, lon: float = 77.1025) -> dict:
     """Fetch live AQI data from Ambee Data API for Delhi"""
     

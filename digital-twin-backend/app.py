@@ -40,7 +40,7 @@ register_aqi_history_routes(app)
 from aqi_history import get_aqi_history
 print("Initializing AQI History & Model...")
 get_aqi_history()
-from aqi_map import generate_heatmap_html, generate_hotspots_html, generate_forecast_hotspots_html, render_map_to_png
+from aqi_map import generate_heatmap_html, generate_hotspots_html, generate_forecast_hotspots_html, render_map_to_png, generate_ward_geojson_heatmap, generate_zone_geojson_heatmap
 from emission_map import generate_emission_heatmap_html, generate_emission_hotspots_html, generate_forecast_emission_hotspots_html, render_map_to_png as render_emission_map_to_png
 import threading
 
@@ -119,6 +119,38 @@ def get_hotspots_png():
             html = generate_hotspots_html()
             render_map_to_png(html, HOTSPOTS_PATH)
         return send_file(HOTSPOTS_PATH, mimetype='image/png')
+
+# Ward/Zone GeoJSON map paths
+WARD_GEOJSON_PATH = os.path.join(STATIC_DIR, 'aqi_map_ward_geojson.png')
+ZONE_GEOJSON_PATH = os.path.join(STATIC_DIR, 'aqi_map_zone_geojson.png')
+
+@app.route('/api/aqi-map/ward-geojson', methods=['GET'])
+def get_ward_geojson_html():
+    """Returns the Interactive Ward GeoJSON Heatmap HTML"""
+    return generate_ward_geojson_heatmap()
+
+@app.route('/api/aqi-map/ward-geojson.png', methods=['GET'])
+def get_ward_geojson_png():
+    """Returns the Ward GeoJSON Heatmap PNG"""
+    from flask import send_file
+    if not os.path.exists(WARD_GEOJSON_PATH) or request.args.get('refresh'):
+        html = generate_ward_geojson_heatmap()
+        render_map_to_png(html, WARD_GEOJSON_PATH)
+    return send_file(WARD_GEOJSON_PATH, mimetype='image/png')
+
+@app.route('/api/aqi-map/zone-geojson', methods=['GET'])
+def get_zone_geojson_html():
+    """Returns the Interactive Zone GeoJSON Heatmap HTML"""
+    return generate_zone_geojson_heatmap()
+
+@app.route('/api/aqi-map/zone-geojson.png', methods=['GET'])
+def get_zone_geojson_png():
+    """Returns the Zone GeoJSON Heatmap PNG"""
+    from flask import send_file
+    if not os.path.exists(ZONE_GEOJSON_PATH) or request.args.get('refresh'):
+        html = generate_zone_geojson_heatmap()
+        render_map_to_png(html, ZONE_GEOJSON_PATH)
+    return send_file(ZONE_GEOJSON_PATH, mimetype='image/png')
 
 # ============================================================================
 # EMISSION MAPS - CO2 Visualization

@@ -201,6 +201,159 @@ def generate_heatmap_html():
 
     return m.get_root().render()
 
+
+def generate_ward_geojson_heatmap():
+    """Generates a Ward-level AQI heatmap using the local wards.geojson file."""
+    import json as _json
+
+    m = folium.Map(
+        location=[DELHI_LAT, DELHI_LON],
+        zoom_start=11,
+        control_scale=True,
+        tiles='cartodbpositron'
+    )
+
+    geojson_path = Path(__file__).parent / "wards.geojson"
+    if not geojson_path.exists():
+        print(f"wards.geojson not found at {geojson_path}")
+        add_delhi_boundary_to_map(m)
+        return m.get_root().render()
+
+    try:
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            data = _json.load(f)
+
+        def get_color(value):
+            if value < 100: return "#fee5d9"
+            if value < 200: return "#fcae91"
+            if value < 300: return "#fb6a4a"
+            if value < 400: return "#de2d26"
+            return "#a50f15"
+
+        for feature in data['features']:
+            ward_name = feature['properties'].get('Ward_Name') or ''
+            sum_chars = sum(ord(c) for c in ward_name) if ward_name else 0
+            base_aqi = 200 + (sum_chars % 200)
+            is_hotspot = any(h['name'].lower() in ward_name.lower() for h in BASE_HOTSPOTS)
+            if is_hotspot:
+                base_aqi += 50
+            val = min(500, max(50, base_aqi))
+
+            feature['properties']['simulated_aqi'] = val
+            feature['properties']['fill_color'] = get_color(val)
+            feature['properties']['display_name'] = ward_name.title()
+
+        folium.GeoJson(
+            data,
+            name="Delhi Wards AQI (Local GeoJSON)",
+            style_function=lambda feature: {
+                'fillColor': feature['properties']['fill_color'],
+                'color': 'white',
+                'weight': 1,
+                'fillOpacity': 0.7,
+            },
+            highlight_function=lambda feature: {
+                'weight': 2,
+                'color': 'black',
+                'fillOpacity': 0.9
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=['display_name', 'Ward_No', 'simulated_aqi'],
+                aliases=['Ward Name:', 'Ward No:', 'AQI Index:'],
+                style=("background-color: white; color: #333; font-family: arial; font-size: 12px; padding: 10px;")
+            )
+        ).add_to(m)
+
+    except Exception as e:
+        print(f"Error generating ward geojson heatmap: {e}")
+        add_delhi_boundary_to_map(m)
+
+    return m.get_root().render()
+
+
+def generate_zone_geojson_heatmap():
+    """Generates a Zone-level AQI heatmap from local zones.geojson."""
+    import json as _json
+
+    m = folium.Map(
+        location=[DELHI_LAT, DELHI_LON],
+        zoom_start=11,
+        control_scale=True,
+        tiles='cartodbpositron'
+    )
+
+    geojson_path = Path(__file__).parent / "zones.geojson"
+    if not geojson_path.exists():
+        print(f"zones.geojson not found at {geojson_path}")
+        add_delhi_boundary_to_map(m)
+        return m.get_root().render()
+
+    try:
+        with open(geojson_path, 'r', encoding='utf-8') as f:
+            data = _json.load(f)
+
+        def get_color(value):
+            if value < 100: return "#fee5d9"
+            if value < 200: return "#fcae91"
+            if value < 300: return "#fb6a4a"
+            if value < 400: return "#de2d26"
+            return "#a50f15"
+
+        new_features = []
+        for feature in data['features']:
+            props = feature.get('properties', {})
+            zone_name = props.get('A_CNST_NM') or props.get('name') or 'Unknown'
+            district = props.get('E_Dstt_Nm') or ''
+
+            # Simulate AQI from zone name hash
+            sum_chars = sum(ord(c) for c in zone_name) if zone_name else 0
+            base_aqi = 150 + (sum_chars % 250)
+            is_hotspot = any(h['name'].lower() in zone_name.lower() for h in BASE_HOTSPOTS)
+            if is_hotspot:
+                base_aqi += 50
+            val = min(500, max(50, base_aqi))
+
+            new_features.append({
+                "type": "Feature",
+                "geometry": feature['geometry'],
+                "properties": {
+                    "Zone_Name": zone_name,
+                    "District": district,
+                    "simulated_aqi": val,
+                    "fill_color": get_color(val)
+                }
+            })
+
+        map_data = {"type": "FeatureCollection", "features": new_features}
+
+        folium.GeoJson(
+            map_data,
+            name="Delhi Zones AQI (Local GeoJSON)",
+            style_function=lambda feature: {
+                'fillColor': feature['properties']['fill_color'],
+                'color': '#ffffff',
+                'weight': 2,
+                'fillOpacity': 0.7,
+            },
+            highlight_function=lambda feature: {
+                'weight': 3,
+                'color': '#333333',
+                'fillOpacity': 0.9
+            },
+            tooltip=folium.GeoJsonTooltip(
+                fields=['Zone_Name', 'District', 'simulated_aqi'],
+                aliases=['Zone:', 'District:', 'AQI:'],
+                style=("background-color: white; color: #333; font-family: arial; font-size: 13px; padding: 10px; font-weight: bold;")
+            )
+        ).add_to(m)
+
+    except Exception as e:
+        print(f"Error generating zone geojson heatmap: {e}")
+        add_delhi_boundary_to_map(m)
+
+    return m.get_root().render()
+
+
 def generate_hotspots_html():
     """Generates the original Hotspot Map with markers."""
     m = folium.Map(location=[DELHI_LAT, DELHI_LON], zoom_start=11)

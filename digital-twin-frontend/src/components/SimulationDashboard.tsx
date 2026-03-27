@@ -20,6 +20,7 @@ import { Download, Loader2, FileText, CheckCircle2 } from "lucide-react";
 // PDF REPORT GENERATOR  (text-rich + targeted chart screenshot)
 // ============================================================================
 
+<<<<<<< HEAD
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -62,6 +63,8 @@ function getHealthProjection(
   };
 }
 
+=======
+>>>>>>> new-origin/main
 async function generateFullReport(
   policyValues: Record<string, number>,
   latestResult: ScenarioResult | null,
@@ -98,6 +101,7 @@ async function generateFullReport(
 
   const gap = (mm = 3) => { y += mm; };
 
+<<<<<<< HEAD
   const paragraph = (
     content: string,
     fontSize = 10,
@@ -115,6 +119,8 @@ async function generateFullReport(
     y += lines.length * lineHeight;
   };
 
+=======
+>>>>>>> new-origin/main
   const hr = () => {
     ensureSpace(5);
     doc.setDrawColor(60, 60, 60);
@@ -307,6 +313,7 @@ async function generateFullReport(
     dataRow("Health Benefit", `Rs.${latestResult.metrics.healthBenefit.toFixed(0)} Crores`, [180, 180, 180], [244, 114, 182]);
     dataRow("Est. Lives Saved", `${Math.round(latestResult.metrics.co2Reduction * 120)}+`, [180, 180, 180], [168, 85, 247]);
 
+<<<<<<< HEAD
     gap(6);
     sectionTitle("LONG-RUN HEALTH OUTLOOK");
     gap(2);
@@ -355,6 +362,8 @@ async function generateFullReport(
       [120, 120, 120]
     );
 
+=======
+>>>>>>> new-origin/main
     // Sector breakdown table
     gap(6);
     sectionTitle("SECTOR IMPACT BREAKDOWN");

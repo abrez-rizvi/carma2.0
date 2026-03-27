@@ -412,8 +412,12 @@ const ACCENT_CLASSES: Record<string, string> = {
 // ============================================================================
 
 export function PolicyLab() {
+<<<<<<< HEAD
   const { policyValues, updatePolicyValue, setPolicyValues, timeHorizon, setTimeHorizon } =
     useGlobalState();
+=======
+  const { policyValues, updatePolicyValue, setPolicyValues } = useGlobalState();
+>>>>>>> new-origin/main
   const [activePreset, setActivePreset] = useState<string | null>(null);
 
   const impacts = calculateEstimatedImpacts(policyValues);
@@ -481,6 +485,48 @@ export function PolicyLab() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        </Reveal>
+
+        {/* ============================================================ */}
+        {/* MITIGATION POLICY PRESETS                                     */}
+        {/* ============================================================ */}
+        <Reveal delay={80}>
+          <div className="mb-8">
+            <div className="text-[10px] text-white/40 uppercase tracking-wider mb-3">
+              Quick Presets — Apply a Mitigation Policy
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {MITIGATION_PRESETS.map((preset) => {
+                const isActive = activePreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    onClick={() => applyPreset(preset)}
+                    className={`group relative flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-medium transition-all border ${
+                      isActive
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-lg shadow-emerald-500/10"
+                        : "bg-white/5 text-white/60 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20"
+                    }`}
+                  >
+                    <span className={isActive ? "text-emerald-400" : "text-white/50 group-hover:text-white/70"}>
+                      {preset.icon}
+                    </span>
+                    <span>{preset.name}</span>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${
+                        isActive
+                          ? "bg-emerald-500/30 border-emerald-500/40 text-emerald-300"
+                          : `${preset.performanceBg} ${preset.performanceColor}`
+                      }`}
+                    >
+                      {preset.performance}
+                    </span>
+                    {isActive && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </Reveal>
