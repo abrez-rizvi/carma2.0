@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { aqiCategories, type AQICategory } from "../data/aqiHealthData";
-import { useAQI } from "../context/AQIContext";
+import { useGlobalState } from "../context/GlobalStateContext";
 import {
   Baby,
   Smile,
@@ -13,11 +13,9 @@ import {
   AlertTriangle,
   Activity,
   Shield,
-  Check,
-  Stethoscope
+  Check
 } from "lucide-react";
 import { LiveAQI } from "./LiveAQI";
-import { HealthImpact } from "./HealthImpact";
 import { Reveal } from "./Reveal";
 
 // ... imports stay same ...
@@ -119,32 +117,23 @@ function VulnerableGroupCard({
 }
 
 export default function AQIHealthImpact() {
-  const { aqiData, isLiveData } = useAQI();
+  const { aqiData } = useGlobalState();
+  const currentAqiValue = aqiData?.aqi ?? null;
 
   const [selectedCategory, setSelectedCategory] = useState<AQICategory>(
     aqiCategories[0]
   );
 
-  const getAverageAqi = (range: string) => {
-    const parts = range.split('-');
-    const min = parseInt(parts[0], 10);
-    const max = parseInt(parts[1].replace('+', ''), 10);
-    return isNaN(min) || isNaN(max) ? 0 : (min + max) / 2;
-  };
-
-  const currentAqiValue = isLiveData ? (aqiData?.aqi ?? null) : getAverageAqi(selectedCategory.range);
-
   useEffect(() => {
-    if (isLiveData && aqiData?.aqi !== undefined && aqiData.aqi !== null) {
-      const aqi = aqiData.aqi;
+    if (currentAqiValue !== null) {
       // Find category that matches the AQI range
       // Mappings: 0-50, 51-100, 101-200, 201-300, 301-400, 401+
       const categoryId =
-        aqi <= 50 ? "good" :
-          aqi <= 100 ? "satisfactory" :
-            aqi <= 200 ? "moderate" :
-              aqi <= 300 ? "poor" :
-                aqi <= 400 ? "very-poor" :
+        currentAqiValue <= 50 ? "good" :
+          currentAqiValue <= 100 ? "satisfactory" :
+            currentAqiValue <= 200 ? "moderate" :
+              currentAqiValue <= 300 ? "poor" :
+                currentAqiValue <= 400 ? "very-poor" :
                   "severe";
 
       const matchedCategory = aqiCategories.find(c => c.id === categoryId);
@@ -152,7 +141,7 @@ export default function AQIHealthImpact() {
         setSelectedCategory(matchedCategory);
       }
     }
-  }, [aqiData?.aqi, isLiveData]);
+  }, [currentAqiValue]);
 
   return (
     <div className="min-h-screen relative">
@@ -165,7 +154,7 @@ export default function AQIHealthImpact() {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" style={{ backgroundColor: currentAqiValue <= 100 ? "#22c55e" : "#ef4444" }}></span>
           </div>
           <div className="text-sm font-bold text-white flex items-center gap-2">
-            <span className="text-white/50 text-xs font-mono uppercase">{isLiveData ? "Live AQI" : "Selected AQI"}</span>
+            <span className="text-white/50 text-xs font-mono uppercase">Live AQI</span>
             {Math.round(currentAqiValue)}
           </div>
         </div>
@@ -308,26 +297,13 @@ export default function AQIHealthImpact() {
           </div>
         </div>
 
-        {/* Live Data Section — only shown when API is reachable */}
-        {isLiveData && (
-          <div className="mt-16 pt-10 border-t border-white/10">
-            <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-              Live Data Feed
-            </h3>
-            <LiveAQI />
-          </div>
-        )}
-
-        {/* AI Health Analysis — always available */}
-        <div className={`${isLiveData ? 'mt-8' : 'mt-16 pt-10 border-t border-white/10'}`}>
-          {!isLiveData && (
-            <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <Stethoscope className="w-4 h-4" />
-              AI Health Consultant
-            </h3>
-          )}
-          <HealthImpact aqiData={aqiData ?? { aqi: selectedCategory.id === 'good' ? 25 : selectedCategory.id === 'satisfactory' ? 75 : selectedCategory.id === 'moderate' ? 150 : selectedCategory.id === 'poor' ? 250 : selectedCategory.id === 'very-poor' ? 350 : 450, aqi_category: selectedCategory.name, pm2_5: 0, pm10: 0, o3: 0, no2: 0, so2: 0, co: 0 }} />
+        {/* Live Data Section (Moved to Bottom) */}
+        <div className="mt-16 pt-10 border-t border-white/10">
+          <h3 className="text-sm font-bold text-white/40 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+            Live Data Feed
+          </h3>
+          <LiveAQI />
         </div>
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSimulation } from "../context/SimulationContext";
+import { useGlobalState } from "../context/GlobalStateContext";
 import { Reveal } from "./Reveal";
 import { Sparkles, Target, Wallet, Clock, Zap, ChevronDown } from "lucide-react";
 
@@ -61,7 +61,7 @@ function getPresetKey(targetAQI: number, budget: string): string {
 }
 
 export function AIPolicyGenerator() {
-  const { setPolicyValues } = useSimulation();
+  const { setPolicyValues } = useGlobalState();
   const [targetAQI, setTargetAQI] = useState(100);
   const [budget, setBudget] = useState("Medium");
   const [timeline, setTimeline] = useState("3yr");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useSimulation } from "../context/SimulationContext";
+import { useGlobalState } from "../context/GlobalStateContext";
 import { Reveal } from "./Reveal";
 import { GitCompare, Trash2 } from "lucide-react";
 import {
@@ -23,7 +23,7 @@ const COLORS = ["#6b7280", "#10b981", "#a855f7"];
 const NAMES = ["Baseline", "User Policy", "AI Generated"];
 
 export function ScenarioComparison() {
-  const { simulationResults, clearScenarios } = useSimulation();
+  const { simulationResults, clearScenarios } = useGlobalState();
 
   if (simulationResults.length === 0) {
     return (

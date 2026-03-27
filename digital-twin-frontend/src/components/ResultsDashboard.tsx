@@ -1,6 +1,6 @@
 "use client";
 
-import { useSimulation } from "../context/SimulationContext";
+import { useGlobalState } from "../context/GlobalStateContext";
 import { Reveal } from "./Reveal";
 import {
   BarChart3,
@@ -55,7 +55,7 @@ interface ResultsDashboardProps {
 }
 
 export function ResultsDashboard({ onSaveScenario }: ResultsDashboardProps) {
-  const { latestResult, isSimulating } = useSimulation();
+  const { latestResult, isSimulating } = useGlobalState();
 
   if (isSimulating) {
     return (

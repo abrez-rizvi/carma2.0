@@ -1,6 +1,6 @@
 "use client";
 
-import { useSimulation } from "../context/SimulationContext";
+import { useGlobalState } from "../context/GlobalStateContext";
 import {
   MapPin,
   Calendar,
@@ -42,12 +42,12 @@ export function CityScenarioBar({ onRunSimulation }: CityScenarioBarProps) {
     activeSectors,
     toggleSector,
     isSimulating,
-  } = useSimulation();
+  } = useGlobalState();
 
   return (
     <section
       id="control-bar"
-      className="sticky top-16 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl"
+      className="sticky top-20 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl"
     >
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex flex-wrap items-center gap-6">
@@ -75,26 +75,30 @@ export function CityScenarioBar({ onRunSimulation }: CityScenarioBarProps) {
           {/* Divider */}
           <div className="w-px h-8 bg-white/10 hidden md:block" />
 
-          {/* Time Horizon Selector */}
-          <div className="flex items-center gap-2">
+          {/* Time Horizon */}
+          <div className="flex items-center gap-3">
             <Calendar className="w-4 h-4 text-cyan-400" />
-            <div className="relative">
-              <select
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/40 font-mono">
+                {timeHorizon[0]}
+              </span>
+              <input
+                type="range"
+                min={2025}
+                max={2035}
                 value={timeHorizon[1]}
                 onChange={(e) =>
                   setTimeHorizon([timeHorizon[0], parseInt(e.target.value)])
                 }
-                className="bg-white/5 text-white text-sm border border-white/10 rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50 appearance-none pr-8 cursor-pointer hover:bg-white/10 transition-colors"
-              >
-                {Array.from({ length: 11 }, (_, i) => 2025 + i).map((year) => (
-                  <option key={year} value={year} className="bg-slate-900">
-                    Target: {year}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 text-xs">
-                ▼
-              </div>
+                className="w-28 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-cyan-500
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5
+                  [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400
+                  [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(6,182,212,0.6)]
+                  [&::-webkit-slider-thumb]:cursor-pointer"
+              />
+              <span className="text-xs text-white/40 font-mono">
+                {timeHorizon[1]}
+              </span>
             </div>
           </div>
 

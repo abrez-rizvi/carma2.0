@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { HealthChat } from './HealthChat';
 import { Stethoscope, Shield, Zap, Sparkles } from 'lucide-react';
-import { useAQI } from '../context/AQIContext';
+import { useGlobalState } from '../context/GlobalStateContext';
 import type { AQIData } from '../types';
 
 interface HealthImpactProps {
@@ -9,7 +9,7 @@ interface HealthImpactProps {
 }
 
 export function HealthImpact({ aqiData }: HealthImpactProps) {
-  const { healthAnalysis, isAnalyzing, generateHealthAnalysis } = useAQI();
+  const { healthAnalysis, isAnalyzing, generateHealthAnalysis } = useGlobalState();
 
   if (isAnalyzing) {
     return (
@@ -38,7 +38,7 @@ export function HealthImpact({ aqiData }: HealthImpactProps) {
           Generate a comprehensive AI-powered analysis of the current air quality's impact on your health, including age-specific risks and immediate safeguards.
         </p>
         <button
-          onClick={() => generateHealthAnalysis(aqiData)}
+          onClick={generateHealthAnalysis}
           className="btn-primary px-8 py-3.5 rounded-full font-bold flex items-center gap-2 mx-auto shadow-lg shadow-green-500/20 hover:shadow-green-500/40 text-white"
         >
           <Sparkles className="w-5 h-5" />

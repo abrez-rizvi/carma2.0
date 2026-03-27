@@ -102,143 +102,87 @@ def add_delhi_boundary_to_map(m):
         return False
 
 
-def generate_emission_heatmap_html(level="ward"):
-    """Generates a Folium map with Ward/Zone Heatmap for CO2 emissions."""
+def generate_emission_heatmap_html():
+    """Generates a Folium map with Grid Heatmap for CO2 emissions (Clipped to Delhi)."""
     
     m = folium.Map(
         location=[DELHI_LAT, DELHI_LON], 
         zoom_start=10, 
-        control_scale=True,
-        tiles='cartodbpositron'
+        control_scale=True
     )
     
-    geojson_url = "https://raw.githubusercontent.com/datameet/Municipal_Spatial_Data/master/Delhi/Delhi_Wards.geojson"
-    
     import requests
-    from shapely.geometry import shape, mapping
+    from shapely.geometry import shape, Point
     from shapely.ops import unary_union
     
-    try:
-        from zone_mapper import get_zone_for_ward
-    except ImportError:
-        def get_zone_for_ward(w): return 'Unknown Zone'
+    add_delhi_boundary_to_map(m)
+    
+    delhi_polygon = None
+    has_boundary = False
     
     try:
+        geojson_url = "https://raw.githubusercontent.com/datameet/Municipal_Spatial_Data/master/Delhi/Delhi_Boundary.geojson"
         resp = requests.get(geojson_url)
         data = resp.json()
-        
-        def get_color(value):
-            if value < 15: return "#eff6ff"
-            if value < 25: return "#bfdbfe"
-            if value < 35: return "#93c5fd"
-            if value < 45: return "#60a5fa"
-            if value < 55: return "#3b82f6"
-            if value < 65: return "#f97316"
-            return "#dc2626"
-            
-        if level == "zone":
-            zone_features = {}
-            for feature in data['features']:
-                ward_name = feature['properties'].get('Ward_Name') or ''
-                zone_name = get_zone_for_ward(ward_name)
-                
-                geom = shape(feature['geometry'])
-                
-                sum_chars = sum(ord(c) for c in ward_name) if ward_name else 0
-                base_emission = 20.0 + (sum_chars % 30)
-                is_hotspot = any(h['name'].lower() in ward_name.lower() for h in EMISSION_HOTSPOTS)
-                if is_hotspot: base_emission += 20.0
-                val = min(80.0, max(10.0, base_emission))
-                
-                if zone_name not in zone_features:
-                    zone_features[zone_name] = {'geoms': [], 'emissions': []}
-                if geom.is_valid:
-                    zone_features[zone_name]['geoms'].append(geom)
-                zone_features[zone_name]['emissions'].append(val)
-                
-            new_features = []
-            for zname, zdata in zone_features.items():
-                if not zdata['geoms']: continue
-                try:
-                    merged_geom = unary_union(zdata['geoms'])
-                    avg_emission = sum(zdata['emissions']) / len(zdata['emissions'])
-                    new_features.append({
-                        "type": "Feature",
-                        "geometry": mapping(merged_geom),
-                        "properties": {
-                            "Zone_Name": zname,
-                            "simulated_emission": round(avg_emission, 1),
-                            "fill_color": get_color(avg_emission)
-                        }
-                    })
-                except Exception as e:
-                    print(f"Error merging emission zone {zname}: {e}")
-                    
-            map_data = {"type": "FeatureCollection", "features": new_features}
-            
-            folium.GeoJson(
-                map_data,
-                name="Delhi Zones Emissions",
-                style_function=lambda feature: {
-                    'fillColor': feature['properties']['fill_color'],
-                    'color': '#ffffff', 
-                    'weight': 1.5,
-                    'fillOpacity': 0.75,
-                },
-                highlight_function=lambda feature: {
-                    'weight': 3,
-                    'color': 'black',
-                    'fillOpacity': 0.95
-                },
-                tooltip=folium.GeoJsonTooltip(
-                    fields=['Zone_Name', 'simulated_emission'],
-                    aliases=['Zone:', 'Avg CO₂ (t/day):'],
-                    style=("background-color: white; color: #333; font-family: arial; font-size: 13px; padding: 10px; font-weight: bold;")
-                )
-            ).add_to(m)
-            
-        else:
-            for feature in data['features']:
-                ward_name = feature['properties'].get('Ward_Name') or ''
-                sum_chars = sum(ord(c) for c in ward_name) if ward_name else 0
-                
-                # Simulated Emission based on string hash for consistency
-                base_emission = 20.0 + (sum_chars % 30)
-                
-                is_hotspot = any(h['name'].lower() in ward_name.lower() for h in EMISSION_HOTSPOTS)
-                if is_hotspot:
-                    base_emission += 20.0
-                    
-                val = min(80.0, max(10.0, base_emission))
-                
-                feature['properties']['simulated_emission'] = round(val, 1)
-                feature['properties']['fill_color'] = get_color(val)
-                feature['properties']['display_name'] = ward_name.title()
-                
-            folium.GeoJson(
-                data,
-                name="Delhi Wards Emissions",
-                style_function=lambda feature: {
-                    'fillColor': feature['properties']['fill_color'],
-                    'color': 'white', 
-                    'weight': 1,
-                    'fillOpacity': 0.7,
-                },
-                highlight_function=lambda feature: {
-                    'weight': 2,
-                    'color': 'black',
-                    'fillOpacity': 0.9
-                },
-                tooltip=folium.GeoJsonTooltip(
-                    fields=['display_name', 'Ward_No', 'simulated_emission'],
-                    aliases=['Ward Name:', 'Ward No:', 'CO₂ (t/day):'],
-                    style=("background-color: white; color: #333; font-family: arial; font-size: 12px; padding: 10px;")
-                )
-            ).add_to(m)
-        
+        features = data.get('features', [])
+        shapes = [shape(f['geometry']) for f in features]
+        delhi_polygon = unary_union(shapes)
+        has_boundary = True
     except Exception as e:
-        print(f"Error generating emission ward heatmap: {e}")
-        add_delhi_boundary_to_map(m)
+        print(f"Error processing boundary for clipping: {e}")
+    
+    # Grid config
+    lat_min, lat_max = 28.40, 28.88
+    lon_min, lon_max = 76.85, 77.35
+    step = 0.015  # Approx 1.5km grid size
+    
+    def get_color(value):
+        """Blue-to-red emission heatmap colors."""
+        if value < 15: return "#eff6ff"   # Very Light Blue
+        if value < 25: return "#bfdbfe"   # Light Blue
+        if value < 35: return "#93c5fd"   # Medium Blue
+        if value < 45: return "#60a5fa"   # Blue
+        if value < 55: return "#3b82f6"   # Strong Blue
+        if value < 65: return "#f97316"   # Orange
+        return "#dc2626"                   # Red
+    
+    lat = lat_min
+    while lat < lat_max:
+        lon = lon_min
+        while lon < lon_max:
+            center_point = Point(lon + step/2, lat + step/2)
+            
+            if has_boundary and not delhi_polygon.contains(center_point):
+                lon += step
+                continue
+            
+            # Calculate emission based on nearby hotspots
+            base_emission = 20.0  # Baseline
+            
+            # Add contribution from nearby hotspots
+            for hotspot in EMISSION_HOTSPOTS:
+                dist = ((lat - hotspot['lat'])**2 + (lon - hotspot['lon'])**2)**0.5
+                if dist < 0.05:  # ~5km radius of influence
+                    contribution = hotspot['emission'] * (1 - dist/0.05) * 0.5
+                    base_emission += contribution
+            
+            # Add random variation
+            val = base_emission + random.uniform(-5, 5)
+            val = max(10, min(80, val))  # Clamp
+            
+            color = get_color(val)
+            
+            folium.Rectangle(
+                bounds=[[lat, lon], [lat + step, lon + step]],
+                color=None,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.6,
+                tooltip=f"CO₂: {val:.1f} t/day"
+            ).add_to(m)
+            
+            lon += step
+        lat += step
     
     return m.get_root().render()
 
@@ -362,158 +306,94 @@ def generate_forecast_emission_hotspots_html(year: int):
     return m.get_root().render()
 
 
-def generate_sector_heatmap_html(sector: str, level="ward"):
-    """Generates a Folium map with Ward/Zone Heatmap for a specific sector's emissions."""
+def generate_sector_heatmap_html(sector: str):
+    """Generates a Folium map with Grid Heatmap for a specific sector's emissions."""
     
     m = folium.Map(
         location=[DELHI_LAT, DELHI_LON], 
         zoom_start=10, 
-        control_scale=True,
-        tiles='cartodbpositron'
+        control_scale=True
     )
     
     import requests
-    from shapely.geometry import shape, mapping
+    from shapely.geometry import shape, Point
     from shapely.ops import unary_union
     
-    try:
-        from zone_mapper import get_zone_for_ward
-    except ImportError:
-        def get_zone_for_ward(w): return 'Unknown Zone'
+    add_delhi_boundary_to_map(m)
     
-    geojson_url = "https://raw.githubusercontent.com/datameet/Municipal_Spatial_Data/master/Delhi/Delhi_Wards.geojson"
+    delhi_polygon = None
+    has_boundary = False
+    
     try:
+        geojson_url = "https://raw.githubusercontent.com/datameet/Municipal_Spatial_Data/master/Delhi/Delhi_Boundary.geojson"
         resp = requests.get(geojson_url)
         data = resp.json()
-        
-        # Determine base gradient color from the sector's main color
-        base_color = SECTOR_COLORS.get(sector, "#6b7280")
-        
-        def get_sector_color(value, max_val=60):
-            import colorsys
-            hex_color = base_color.lstrip('#')
-            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-            intensity = min(1.0, max(0.2, value / max_val))
-            # Blend with a light grey/white background for lower values
-            r = int(255 - (255 - r) * intensity)
-            g = int(255 - (255 - g) * intensity)
-            b = int(255 - (255 - b) * intensity)
-            return f"#{r:02x}{g:02x}{b:02x}"
-
-        sector_hotspots = [h for h in EMISSION_HOTSPOTS if h['sector'] == sector]
-        
-        if level == "zone":
-            zone_features = {}
-            for feature in data['features']:
-                ward_name = feature['properties'].get('Ward_Name') or ''
-                zone_name = get_zone_for_ward(ward_name)
-                
-                geom = shape(feature['geometry'])
-                
-                # Approximate the emission based on hotspots inside the polygon
-                base_emission = 2.0
-                if geom.is_valid:
-                    centroid = geom.centroid
-                    clat, clon = centroid.y, centroid.x
-                    for hotspot in sector_hotspots:
-                        dist = ((clat - hotspot['lat'])**2 + (clon - hotspot['lon'])**2)**0.5
-                        if dist < 0.08:
-                            base_emission += hotspot['emission'] * (1 - dist/0.08) * 0.5
-                
-                val = min(60.0, max(2.0, base_emission))
-                
-                if zone_name not in zone_features:
-                    zone_features[zone_name] = {'geoms': [], 'emissions': []}
-                if geom.is_valid:
-                    zone_features[zone_name]['geoms'].append(geom)
-                zone_features[zone_name]['emissions'].append(val)
-                
-            new_features = []
-            for zname, zdata in zone_features.items():
-                if not zdata['geoms']: continue
-                try:
-                    merged_geom = unary_union(zdata['geoms'])
-                    avg_emission = sum(zdata['emissions']) / len(zdata['emissions'])
-                    new_features.append({
-                        "type": "Feature",
-                        "geometry": mapping(merged_geom),
-                        "properties": {
-                            "Zone_Name": zname,
-                            "simulated_emission": round(avg_emission, 1),
-                            "fill_color": get_sector_color(avg_emission)
-                        }
-                    })
-                except Exception as e:
-                    pass
-                    
-            map_data = {"type": "FeatureCollection", "features": new_features}
-            
-            folium.GeoJson(
-                map_data,
-                name=f"Delhi Zones {sector} Emissions",
-                style_function=lambda feature: {
-                    'fillColor': feature['properties']['fill_color'],
-                    'color': '#ffffff', 
-                    'weight': 1.5,
-                    'fillOpacity': 0.75,
-                },
-                highlight_function=lambda feature: {
-                    'weight': 3,
-                    'color': 'black',
-                    'fillOpacity': 0.95
-                },
-                tooltip=folium.GeoJsonTooltip(
-                    fields=['Zone_Name', 'simulated_emission'],
-                    aliases=['Zone:', f'{sector} CO₂ (t/day):'],
-                    style=("background-color: white; color: #333; font-family: arial; font-size: 13px; padding: 10px; font-weight: bold;")
-                )
-            ).add_to(m)
-            
-        else:
-            for feature in data['features']:
-                ward_name = feature['properties'].get('Ward_Name') or ''
-                geom = shape(feature['geometry'])
-                
-                base_emission = 2.0
-                if geom.is_valid:
-                    centroid = geom.centroid
-                    clat, clon = centroid.y, centroid.x
-                    for hotspot in sector_hotspots:
-                        dist = ((clat - hotspot['lat'])**2 + (clon - hotspot['lon'])**2)**0.5
-                        if dist < 0.08:
-                            base_emission += hotspot['emission'] * (1 - dist/0.08) * 0.5
-                
-                val = min(60.0, max(2.0, base_emission))
-                
-                feature['properties']['simulated_emission'] = round(val, 1)
-                feature['properties']['fill_color'] = get_sector_color(val)
-                feature['properties']['display_name'] = ward_name.title()
-                
-            folium.GeoJson(
-                data,
-                name=f"Delhi Wards {sector} Emissions",
-                style_function=lambda feature: {
-                    'fillColor': feature['properties']['fill_color'],
-                    'color': 'white', 
-                    'weight': 1,
-                    'fillOpacity': 0.7,
-                },
-                highlight_function=lambda feature: {
-                    'weight': 2,
-                    'color': 'black',
-                    'fillOpacity': 0.9
-                },
-                tooltip=folium.GeoJsonTooltip(
-                    fields=['display_name', 'Ward_No', 'simulated_emission'],
-                    aliases=['Ward Name:', 'Ward No:', f'{sector} CO₂ (t/day):'],
-                    style=("background-color: white; color: #333; font-family: arial; font-size: 12px; padding: 10px;")
-                )
-            ).add_to(m)
-            
+        features = data.get('features', [])
+        shapes = [shape(f['geometry']) for f in features]
+        delhi_polygon = unary_union(shapes)
+        has_boundary = True
     except Exception as e:
-        print(f"Error generating sector heatmap: {e}")
-        add_delhi_boundary_to_map(m)
-        
+        print(f"Error processing boundary for clipping: {e}")
+    
+    # Filter hotspots by sector
+    sector_hotspots = [h for h in EMISSION_HOTSPOTS if h['sector'] == sector]
+    base_color = SECTOR_COLORS.get(sector, "#6b7280")
+    
+    # Grid config
+    lat_min, lat_max = 28.40, 28.88
+    lon_min, lon_max = 76.85, 77.35
+    step = 0.015
+    
+    def get_sector_color(value, max_val=50):
+        """Generate color gradient based on sector color."""
+        import colorsys
+        # Convert hex to RGB
+        hex_color = base_color.lstrip('#')
+        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        # Vary opacity/lightness based on value
+        intensity = min(1.0, value / max_val)
+        # Blend with white for lower values
+        r = int(255 - (255 - r) * intensity)
+        g = int(255 - (255 - g) * intensity)
+        b = int(255 - (255 - b) * intensity)
+        return f"#{r:02x}{g:02x}{b:02x}"
+    
+    lat = lat_min
+    while lat < lat_max:
+        lon = lon_min
+        while lon < lon_max:
+            center_point = Point(lon + step/2, lat + step/2)
+            
+            if has_boundary and not delhi_polygon.contains(center_point):
+                lon += step
+                continue
+            
+            # Calculate emission based on nearby sector-specific hotspots
+            base_emission = 5.0  # Lower baseline for sector-specific
+            
+            for hotspot in sector_hotspots:
+                dist = ((lat - hotspot['lat'])**2 + (lon - hotspot['lon'])**2)**0.5
+                if dist < 0.08:  # Larger radius for sector
+                    contribution = hotspot['emission'] * (1 - dist/0.08) * 0.6
+                    base_emission += contribution
+            
+            val = base_emission + random.uniform(-3, 3)
+            val = max(2, min(60, val))
+            
+            color = get_sector_color(val)
+            
+            folium.Rectangle(
+                bounds=[[lat, lon], [lat + step, lon + step]],
+                color=None,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.6,
+                tooltip=f"{sector}: {val:.1f} t/day"
+            ).add_to(m)
+            
+            lon += step
+        lat += step
+    
     return m.get_root().render()
 
 
