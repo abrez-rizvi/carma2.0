@@ -21,6 +21,7 @@ import { Download, Loader2, FileText, CheckCircle2 } from "lucide-react";
 // ============================================================================
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
@@ -65,6 +66,8 @@ function getHealthProjection(
 
 =======
 >>>>>>> new-origin/main
+=======
+>>>>>>> new-origin/main
 async function generateFullReport(
   policyValues: Record<string, number>,
   latestResult: ScenarioResult | null,
@@ -102,6 +105,7 @@ async function generateFullReport(
   const gap = (mm = 3) => { y += mm; };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const paragraph = (
     content: string,
     fontSize = 10,
@@ -119,6 +123,8 @@ async function generateFullReport(
     y += lines.length * lineHeight;
   };
 
+=======
+>>>>>>> new-origin/main
 =======
 >>>>>>> new-origin/main
   const hr = () => {
@@ -314,6 +320,7 @@ async function generateFullReport(
     dataRow("Est. Lives Saved", `${Math.round(latestResult.metrics.co2Reduction * 120)}+`, [180, 180, 180], [168, 85, 247]);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     gap(6);
     sectionTitle("LONG-RUN HEALTH OUTLOOK");
     gap(2);
@@ -362,6 +369,8 @@ async function generateFullReport(
       [120, 120, 120]
     );
 
+=======
+>>>>>>> new-origin/main
 =======
 >>>>>>> new-origin/main
     // Sector breakdown table
