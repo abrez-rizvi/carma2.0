@@ -18,7 +18,7 @@ export function EmissionMaps() {
         : 'Source-level emission markers by sector. Use the colors to distinguish industry, transport, power, residential, aviation, and commercial contributors.';
 
     return (
-        <div className='flex gap-4'>
+        <div className='grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch'>
             <MapPanelCard
                 title="CO2 Emission Heatmap"
                 icon={<span role="img" aria-label="map">🌡️</span>}

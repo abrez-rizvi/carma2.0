@@ -19,7 +19,7 @@ export function AQIMaps() {
     return (
         <div className='space-y-4'>
             {/* Row 1: Ward & Zone GeoJSON Maps */}
-            <div className='flex gap-4'>
+            <div className='grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch'>
                 <MapPanelCard
                     title="Ward AQI Map"
                     icon={<span role="img" aria-label="ward">🏘️</span>}
@@ -42,7 +42,7 @@ export function AQIMaps() {
                 />
             </div>
             {/* Row 2: Original Heatmap & Hotspots */}
-            <div className='flex gap-4'>
+            <div className='grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch'>
                 <MapPanelCard
                     title="Delhi AQI Heatmap"
                     icon={<span role="img" aria-label="map">🗺️</span>}

@@ -18,6 +18,28 @@ export function EmissionForecast() {
     const [loading, setLoading] = useState(false);
     const [days, setDays] = useState(30);
 
+    const toNumber = (value: unknown): number => {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const normalizePoint = (point: any) => {
+        const emission = toNumber(point?.emission ?? point?.total_emissions ?? point?.avg_emission);
+        const sectors = {
+            Aviation: toNumber(point?.sectors?.Aviation),
+            Ground_Transport: toNumber(point?.sectors?.Ground_Transport ?? point?.sectors?.GroundTransport),
+            Industry: toNumber(point?.sectors?.Industry),
+            Power: toNumber(point?.sectors?.Power),
+            Residential: toNumber(point?.sectors?.Residential),
+        };
+
+        return {
+            date: point?.date,
+            emission,
+            sectors,
+        };
+    };
+
     useEffect(() => {
         fetchForecast(days);
     }, [days]);
@@ -32,18 +54,18 @@ export function EmissionForecast() {
             });
             const result = await response.json();
             if (result.status === 'success') {
-                const history = result.history || [];
-                const forecasts = result.forecasts || [];
+                const history = (result.history || []).map(normalizePoint).filter((d: ForecastPoint) => d.date);
+                const forecasts = (result.forecasts || result.data || []).map(normalizePoint).filter((d: ForecastPoint) => d.date);
 
                 const lastHistory = history.length > 0 ? history[history.length - 1] : null;
 
-                const processedHistory = history.map((d: any) => ({
+                const processedHistory = history.map((d: ForecastPoint) => ({
                     ...d,
                     emission_hist: d.emission,
                     emission_pred: null
                 }));
 
-                const processedForecast = forecasts.map((d: any) => ({
+                const processedForecast = forecasts.map((d: ForecastPoint) => ({
                     ...d,
                     emission_hist: null,
                     emission_pred: d.emission
@@ -59,9 +81,12 @@ export function EmissionForecast() {
                 }
 
                 setData([...processedHistory, ...processedForecast]);
+            } else {
+                setData([]);
             }
         } catch (e) {
             console.error("Forecast error:", e);
+            setData([]);
         } finally {
             setLoading(false);
         }
@@ -69,7 +94,8 @@ export function EmissionForecast() {
 
     const getTicks = () => {
         if (data.length === 0) return [];
-        const emissions = data.map(d => d.emission);
+        const emissions = data.map(d => d.emission).filter((value) => Number.isFinite(value));
+        if (emissions.length === 0) return [];
         const min = Math.floor(Math.min(...emissions) / 10) * 10;
         const max = Math.ceil(Math.max(...emissions) / 10) * 10;
 
@@ -134,6 +160,7 @@ export function EmissionForecast() {
             loadingText="Calculating Emissions Model..."
             headerRight={headerRight}
             footer={footer}
+            className="h-full"
         >
             <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">

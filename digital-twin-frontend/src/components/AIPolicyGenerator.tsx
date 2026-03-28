@@ -287,6 +287,18 @@ export function AIPolicyGenerator() {
       });
 
       if (!response.ok) {
+        let backendMessage = "";
+        try {
+          const errorPayload = await response.json();
+          backendMessage = errorPayload?.error || errorPayload?.message || "";
+        } catch {
+          backendMessage = "";
+        }
+
+        if (backendMessage) {
+          throw new Error(`AI policy request failed (${response.status}): ${backendMessage}`);
+        }
+
         throw new Error(`AI policy request failed (${response.status})`);
       }
 

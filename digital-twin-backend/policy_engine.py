@@ -188,6 +188,23 @@ class PolicyEngine:
             f"  {e['source']}->{e['target']} (current weight: {e.get('weight', 0.5)})"
             for e in graph_context.get("edges", [])
         ])
+
+        # Use a valid in-graph edge in the prompt example to reduce hallucinated edges.
+        edge_examples = graph_context.get("edges", [])
+        if edge_examples:
+            example_edge = edge_examples[0]
+            example_source = example_edge.get("source", "transport")
+            example_target = example_edge.get("target", "co2")
+            example_original_weight = float(example_edge.get("weight", 0.7))
+        else:
+            example_source = "transport"
+            example_target = "co2"
+            example_original_weight = 0.7
+
+        if increase_emissions:
+            example_new_weight = min(1.0, round(max(example_original_weight + 0.15, example_original_weight * 1.2), 2))
+        else:
+            example_new_weight = max(0.0, round(min(example_original_weight - 0.15, example_original_weight * 0.7), 2))
         
         disabled_section = ""
         if disabled_nodes:
@@ -275,10 +292,10 @@ Return ONLY valid JSON:
   "mutations": [
     {{
       "type": "{mutation_type}",
-      "source": "transport",
-      "target": "vehicle-emissions",
-      "new_weight": {"0.35" if not increase_emissions else "0.9"},
-      "original_weight": 0.7,
+            "source": "{example_source}",
+            "target": "{example_target}",
+            "new_weight": {example_new_weight},
+            "original_weight": {example_original_weight},
       "reason": "Research shows..."
     }}
   ],
@@ -352,8 +369,31 @@ Return ONLY valid JSON:
             node_ids = set(graph_context.get("node_ids", []))
             
         edge_pairs = set((e['source'], e['target']) for e in graph_context.get("edges", []))
+
+        # Normalize common alias names produced by LLMs to the canonical graph IDs.
+        alias_map = {
+            'industry': 'industries',
+            'industrial': 'industries',
+            'vehicle-emissions': 'co2',
+            'vehicle_emissions': 'co2',
+            'emissions': 'co2',
+            'co2-emissions': 'co2',
+            'air-quality': 'aqi',
+            'air_quality': 'aqi',
+            'air pollution': 'aqi',
+        }
+
+        def normalize_node_id(node_id: Optional[str]) -> Optional[str]:
+            if node_id is None:
+                return None
+            normalized = str(node_id).strip().lower()
+            return alias_map.get(normalized, normalized)
         
         for mutation in policy.mutations:
+            mutation.node_id = normalize_node_id(mutation.node_id)
+            mutation.source = normalize_node_id(mutation.source)
+            mutation.target = normalize_node_id(mutation.target)
+
             if mutation.type == "disable_node":
                 if mutation.node_id not in node_ids:
                     raise ValueError(f"Unknown node: {mutation.node_id}")
@@ -406,7 +446,7 @@ def get_graph_context_from_file(filepath: str) -> Dict[str, Any]:
             ],
             'edges': [
                 {'source': 'industries', 'target': 'transport', 'weight': 0.6},
-                {'source': 'transport', 'target': 'vehicle-emissions', 'weight': 0.7},
+                {'source': 'transport', 'target': 'co2', 'weight': 0.7},
                 {'source': 'energy', 'target': 'co2', 'weight': 0.8},
                 {'source': 'co2', 'target': 'aqi', 'weight': 0.9}
             ]

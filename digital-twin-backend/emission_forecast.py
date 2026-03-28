@@ -24,9 +24,52 @@ class EmissionForecaster:
         self.n_lags = 14
         self.target_col = 'Total Emissions'
         self.sector_cols = ['Aviation (%)', 'Ground Transport (%)', 'Industry (%)', 'Power (%)', 'Residential (%)']
-        
-        if os.path.exists(data_path):
-            self._train_model()
+
+        self._train_model()
+
+    def _normalize_columns(self, df):
+        rename_map = {
+            'Total_Emission': 'Total Emissions',
+            'Ground_Transport': 'Ground Transport (%)',
+            'Aviation': 'Aviation (%)',
+            'Industry': 'Industry (%)',
+            'Power': 'Power (%)',
+            'Residential': 'Residential (%)',
+        }
+        return df.rename(columns=rename_map)
+
+    def _load_training_data(self):
+        """Load training data with robust fallbacks for local/dev environments."""
+        candidates = [self.data_path, 'daily_emissions_2020-25.csv']
+        errors = []
+
+        for candidate in candidates:
+            if not os.path.exists(candidate):
+                continue
+
+            try:
+                if candidate.lower().endswith('.xlsx') or candidate.lower().endswith('.xls'):
+                    df = pd.read_excel(candidate)
+                else:
+                    # Historic CSV uses day-first dates.
+                    df = pd.read_csv(candidate)
+
+                df = self._normalize_columns(df)
+
+                required = {'Date', self.target_col, *self.sector_cols}
+                if not required.issubset(set(df.columns)):
+                    raise ValueError(
+                        f"Missing required columns in {candidate}. Found: {list(df.columns)}"
+                    )
+
+                return df
+            except Exception as e:
+                errors.append(f"{candidate}: {e}")
+
+        raise RuntimeError(
+            "Unable to load emission training data. "
+            + " | ".join(errors if errors else ['No candidate files found'])
+        )
     
     def _create_features(self, data):
         df_feat = data.copy()
@@ -58,7 +101,7 @@ class EmissionForecaster:
         return df_feat
     
     def _train_model(self):
-        df = pd.read_excel(self.data_path)
+        df = self._load_training_data()
         df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)
         df = df.sort_values('Date').reset_index(drop=True)
         df['Year'] = df['Date'].dt.year
@@ -67,7 +110,7 @@ class EmissionForecaster:
         self.df = df
         self.df_features = self._create_features(df)
         
-        exclude_cols = ['Date', self.target_col, 'Year'] + self.sector_cols
+        exclude_cols = ['Date', self.target_col, 'Year', 'AQI'] + self.sector_cols
         self.feature_cols = [col for col in self.df_features.columns if col not in exclude_cols]
         
         X = self.df_features[self.feature_cols].values

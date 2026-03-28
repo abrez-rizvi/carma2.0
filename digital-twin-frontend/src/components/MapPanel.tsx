@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 interface MapPanelCardProps {
     title: string;
@@ -37,24 +37,43 @@ export function MapPanelCard({
     loadingText = 'Loading...',
 }: MapPanelCardProps) {
     const [imgKey, setImgKey] = useState(0);
-    const [hasError, setHasError] = useState(false);
-    const [isImgLoaded, setIsImgLoaded] = useState(false);
+    const [useInteractivePreview, setUseInteractivePreview] = useState(false);
+    const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
 
     const currentSrc = `${imageSrc}${imageSrc.includes('?') ? '&' : '?'}t=${imgKey}`;
+    const interactivePreviewSrc = `${interactiveUrl}${interactiveUrl.includes('?') ? '&' : '?'}embed=1&t=${imgKey}`;
+
+    useEffect(() => {
+        if (useInteractivePreview || isPreviewLoaded) {
+            return;
+        }
+
+        // PNG generation can fail or stall when headless browser dependencies are missing.
+        // Fall back to embedded interactive map so the preview panel is still usable.
+        const timeout = window.setTimeout(() => {
+            setUseInteractivePreview(true);
+            setIsPreviewLoaded(false);
+        }, 7000);
+
+        return () => window.clearTimeout(timeout);
+    }, [useInteractivePreview, isPreviewLoaded, currentSrc]);
+
+    const resetPreviewState = useCallback(() => {
+        setUseInteractivePreview(false);
+        setIsPreviewLoaded(false);
+    }, []);
 
     const handleRefresh = useCallback(() => {
-        setHasError(false);
-        setIsImgLoaded(false);
+        resetPreviewState();
         setImgKey(Date.now());
         onRefresh();
-    }, [onRefresh]);
+    }, [onRefresh, resetPreviewState]);
 
     const handleYearChange = useCallback((year: string) => {
-        setHasError(false);
-        setIsImgLoaded(false);
+        resetPreviewState();
         setImgKey(Date.now());
         yearSelector?.onChange(year);
-    }, [yearSelector]);
+    }, [yearSelector, resetPreviewState]);
 
     // Custom select dropdown SVG for dark theme
     const selectStyle = {
@@ -65,7 +84,7 @@ export function MapPanelCard({
     };
 
     return (
-        <div className="glass-panel p-6">
+        <div className="glass-panel p-6 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
                     {icon}
@@ -99,34 +118,46 @@ export function MapPanelCard({
                 </div>
             </div>
             <div className="relative w-full aspect-video bg-black/40 rounded-2xl overflow-hidden border border-white/5 flex items-center justify-center group">
-                {!hasError && (
+                {!useInteractivePreview && (
                     <img
                         key={imgKey}
                         src={currentSrc}
                         alt={imageAlt}
                         className={`w-full h-full object-cover transition-all duration-700 ${isLoading ? 'opacity-50' : ''}`}
                         onError={() => {
-                            setHasError(true);
-                            setIsImgLoaded(false);
+                            setUseInteractivePreview(true);
+                            setIsPreviewLoaded(false);
                         }}
                         onLoad={() => {
-                            setIsImgLoaded(true);
+                            setIsPreviewLoaded(true);
                         }}
                     />
                 )}
-                <div className={`absolute inset-0 pointer-events-none flex items-center justify-center text-white/30 ${isImgLoaded && !hasError ? '-z-10' : 'z-0'}`}>
-                    {hasError ? 'Failed to load image' : isLoading ? loadingText : 'Loading...'}
+                {useInteractivePreview && (
+                    <iframe
+                        key={`iframe-${imgKey}`}
+                        src={interactivePreviewSrc}
+                        title={`${title} interactive preview`}
+                        className={`w-full h-full border-0 transition-all duration-700 ${isLoading ? 'opacity-50' : ''}`}
+                        loading="lazy"
+                        onLoad={() => {
+                            setIsPreviewLoaded(true);
+                        }}
+                    />
+                )}
+                <div className={`absolute inset-0 pointer-events-none flex items-center justify-center text-white/30 ${isPreviewLoaded ? '-z-10' : 'z-0'}`}>
+                    {isLoading ? loadingText : useInteractivePreview ? 'Loading interactive preview...' : 'Loading...'}
                 </div>
             </div>
-            <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <p className="text-xs text-white/40 leading-relaxed md:max-w-[78%]">
+            <div className="mt-4 flex items-start justify-between gap-3 min-h-12">
+                <p className="text-xs text-white/40 leading-relaxed flex-1">
                     {caption}
                 </p>
                 <a
                     href={interactiveUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs text-secondary hover:text-white transition-colors hover:underline flex items-center gap-1 self-start shrink-0"
+                    className="text-xs text-secondary hover:text-white transition-colors hover:underline flex items-center gap-1 self-start shrink-0 whitespace-nowrap"
                 >
                     Interactive View &rarr;
                 </a>

@@ -7,6 +7,7 @@ from flask_cors import CORS
 from datetime import datetime
 import json
 import traceback
+import uuid
 
 from policy_engine import PolicyEngine, get_graph_context_from_file
 from graph_engine import GraphState, ImpactAnalyzer
@@ -374,16 +375,82 @@ def generate_policy():
         "status": "success"
     }
     """
+    def _select_fallback_edge(edges):
+        if not edges:
+            return {'source': 'transport', 'target': 'co2', 'weight': 0.6}
+
+        preferred = [
+            ('transport', 'co2'),
+            ('industries', 'co2'),
+            ('energy', 'co2'),
+            ('co2', 'aqi'),
+            ('transport', 'aqi'),
+            ('industries', 'aqi'),
+        ]
+        edge_map = {(e.get('source'), e.get('target')): e for e in edges}
+        for pair in preferred:
+            if pair in edge_map:
+                return edge_map[pair]
+        return edges[0]
+
+    def _build_fallback_policy(graph_context, query):
+        edges = graph_context.get('edges', []) if isinstance(graph_context, dict) else []
+        edge = _select_fallback_edge(edges)
+        source = edge.get('source', 'transport')
+        target = edge.get('target', 'co2')
+        original_weight = float(edge.get('weight', 0.6))
+        new_weight = round(max(0.05, min(0.95, original_weight * 0.7)), 2)
+
+        return {
+            'policy_id': f"fallback-{uuid.uuid4().hex[:8]}",
+            'name': 'Resilient Clean Air Action Plan',
+            'description': (
+                'Fallback policy generated due to temporary AI generation issues. '
+                'This recommendation applies a conservative emission-flow reduction '
+                'on a high-impact edge from the current graph.'
+            ),
+            'mutations': [
+                {
+                    'type': 'reduce_edge_weight',
+                    'source': source,
+                    'target': target,
+                    'new_weight': new_weight,
+                    'original_weight': original_weight,
+                    'reason': (
+                        f"Reduce propagation from {source} to {target} to lower downstream CO2/AQI impact "
+                        "while preserving model stability."
+                    ),
+                    'reversible': True,
+                }
+            ],
+            'estimated_impacts': {
+                'co2_reduction_pct': 8.0,
+                'aqi_improvement_pct': 10.0,
+                'confidence': 0.55,
+            },
+            'trade_offs': [
+                {
+                    'sector': 'general',
+                    'impact': 'negative',
+                    'magnitude': 'mild',
+                    'description': 'May require additional budget and phased implementation for sustained impact.'
+                }
+            ],
+            'source_research': {
+                'paper_ids': [],
+                'key_quotes': [query],
+                'confidence': 0.55,
+            },
+            'timestamp': datetime.now().isoformat(),
+        }
+
     try:
-        data = request.json
+        data = request.json or {}
         query = data.get('research_query')
-        
+
         if not query:
             return jsonify({'error': 'Missing research_query'}), 400
-        
-        # Retrieve research
-        research_chunks, is_direct_query = policy_engine.query_research(query, k=3)
-        
+
         # Get graph context for validation
         graph_context = data.get('graph_context')
         if not graph_context:
@@ -391,22 +458,38 @@ def generate_policy():
             graph_context = get_graph_context_from_file(str(config.GRAPH_STATE_PATH))
         else:
             print("Using dynamic graph context from frontend")
-        
-        # Extract policy via LLM
-        policy = policy_engine.extract_policy(
-            research_chunks,
-            graph_context,
-            is_direct_query=is_direct_query,
-            user_query=query
-        )
-        
-        return jsonify({
-            'status': 'success',
-            'policy': policy.dict(),
-            'research_evidence': research_chunks,
-            'timestamp': datetime.now().isoformat()
-        })
-    
+
+        # Retrieve research and attempt full AI policy generation.
+        research_chunks, is_direct_query = policy_engine.query_research(query, k=3)
+
+        try:
+            policy = policy_engine.extract_policy(
+                research_chunks,
+                graph_context,
+                is_direct_query=is_direct_query,
+                user_query=query
+            )
+
+            return jsonify({
+                'status': 'success',
+                'policy': policy.dict(),
+                'research_evidence': research_chunks,
+                'timestamp': datetime.now().isoformat()
+            })
+        except Exception as generation_error:
+            print(f"Policy AI generation failed, using fallback policy: {generation_error}")
+            traceback.print_exc()
+
+            fallback_policy = _build_fallback_policy(graph_context, query)
+            return jsonify({
+                'status': 'success',
+                'policy': fallback_policy,
+                'research_evidence': research_chunks if isinstance(research_chunks, list) else [query],
+                'fallback': True,
+                'fallback_reason': str(generation_error),
+                'timestamp': datetime.now().isoformat()
+            })
+
     except Exception as e:
         print(f"Error in generate_policy: {e}")
         traceback.print_exc()

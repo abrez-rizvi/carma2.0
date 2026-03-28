@@ -108,11 +108,11 @@ export function BaselineOverview() {
         </Reveal>
 
         {/* Charts Row 1: Emission Forecast + AQI Trends */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-4">
-          <Reveal delay={200} className="flex-1">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4 items-stretch">
+          <Reveal delay={200} className="h-full">
             <EmissionForecast />
           </Reveal>
-          <Reveal delay={300} className="flex-1">
+          <Reveal delay={300} className="h-full">
             <AQITrends />
           </Reveal>
         </div>
