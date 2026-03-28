@@ -7,8 +7,9 @@ langchain-groq
 langchain-google-genai
 pydantic
 
-# LLM & Embeddings
+# AI & LLM
 openai
+google-generativeai
 sentence-transformers
 huggingface-hub
 hf_transfer
@@ -20,19 +21,20 @@ faiss-cpu
 flask==3.0.0
 flask-cors==4.0.0
 
-# PDF processing
-pypdf==4.1.0
-
-# Utilities
-python-dotenv==1.0.0
-openpyxl==3.1.5
+# Data Science & Utilities
+numpy
 pandas
 scikit-learn
-
-gunicorn
 xgboost
+scipy
+openpyxl==3.1.5
+python-dotenv==1.0.0
+requests
+shapely
+
+# Map Rendering & PDF
 folium
 selenium
 webdriver-manager
-shapely
-requests
+pypdf==4.1.0
+gunicorn
