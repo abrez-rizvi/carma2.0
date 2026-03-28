@@ -40,7 +40,27 @@ export function DynamicSimulationMaps({ result }: DynamicSimulationMapsProps) {
                 These interactive maps dynamically reflect the reductions calculated in the current policy scenario. 
                 Explore how the sector-specific emissions and overall AQI intensity shift across the city.
             </p>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                <MapPanelCard
+                    title="Simulated Ward AQI Map"
+                    icon={<span role="img" aria-label="ward">🏘️</span>}
+                    imageSrc={`${API_BASE_URL}/api/aqi-map/ward-geojson.png${qs}`}
+                    imageAlt="Ward AQI Map"
+                    interactiveUrl={`${API_BASE_URL}/api/aqi-map/ward-geojson${qs}`}
+                    caption="Simulated ward-level AQI choropleth based on applied policy improvements."
+                    onRefresh={() => {}}
+                    isLoading={false}
+                />
+                <MapPanelCard
+                    title="Simulated Zone AQI Map"
+                    icon={<span role="img" aria-label="zone">🗺️</span>}
+                    imageSrc={`${API_BASE_URL}/api/aqi-map/zone-geojson.png${qs}`}
+                    imageAlt="Zone AQI Map"
+                    interactiveUrl={`${API_BASE_URL}/api/aqi-map/zone-geojson${qs}`}
+                    caption="Simulated zone-level aggregated AQI showing regional policy impacts."
+                    onRefresh={() => {}}
+                    isLoading={false}
+                />
                 <MapPanelCard
                     title="Simulated AQI Heatmap"
                     icon={<span role="img" aria-label="map">🌡️</span>}

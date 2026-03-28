@@ -26,7 +26,7 @@ export default function Home() {
             view dynamic emission maps, and simulate policy lab impacts all in one unified platform.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <Link href="/baseline" className="group p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all">
               <BarChart3 className="w-8 h-8 text-cyan-400 mx-auto mb-4 group-hover:scale-110 transition-transform" />
               <h3 className="text-lg font-bold text-white mb-2">Baseline</h3>
@@ -40,15 +40,6 @@ export default function Home() {
               <History className="w-8 h-8 text-amber-400 mx-auto mb-4 group-hover:scale-110 transition-transform" />
               <h3 className="text-lg font-bold text-white mb-2">Historic Trends</h3>
               <p className="text-xs text-white/40 mb-4">Past emissions & AQI analysis</p>
-              <div className="text-emerald-400 text-xs flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                Enter <ArrowRight className="w-3 h-3" />
-              </div>
-            </Link>
-
-            <Link href="/maps" className="group p-6 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 cursor-pointer transition-all">
-              <Map className="w-8 h-8 text-indigo-400 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-              <h3 className="text-lg font-bold text-white mb-2">Interactive Maps</h3>
-              <p className="text-xs text-white/40 mb-4">AQI hotspots & sector distributions</p>
               <div className="text-emerald-400 text-xs flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 Enter <ArrowRight className="w-3 h-3" />
               </div>
