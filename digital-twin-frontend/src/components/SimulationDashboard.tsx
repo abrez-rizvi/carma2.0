@@ -2,19 +2,15 @@
 
 import { useState } from "react";
 import { useGlobalState, type ScenarioResult } from "../context/GlobalStateContext";
+import { API_BASE_URL } from "../config";
+import { Download, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { CityScenarioBar } from "./CityScenarioBar";
-import { BaselineOverview } from "./BaselineOverview";
-import { SectorInterdependence } from "./SectorInterdependence";
 import { PolicyLab, calculateEstimatedImpacts, POLICY_CONTROLS } from "./PolicyLab";
 import { AIPolicyGenerator } from "./AIPolicyGenerator";
 import { ResultsDashboard } from "./ResultsDashboard";
-import { AQIMaps } from "./AQIMaps";
-import { EmissionMaps } from "./EmissionMaps";
-import { SectorMaps } from "./SectorMaps";
 import { ScenarioComparison } from "./ScenarioComparison";
 import { PolicyHeatmap } from "./PolicyHeatmap";
-import { API_BASE_URL } from "../config";
-import { Download, Loader2, FileText, CheckCircle2 } from "lucide-react";
+import { DynamicSimulationMaps } from "./DynamicSimulationMaps";
 
 // ============================================================================
 // PDF REPORT GENERATOR  (text-rich + targeted chart screenshot)
@@ -666,10 +662,6 @@ export function SimulationDashboard() {
       {/* Sticky Control Bar */}
       <CityScenarioBar onRunSimulation={runSimulation} />
 
-      {/* EXPLORE Phase */}
-      <BaselineOverview />
-      <SectorInterdependence />
-
       {/* EXPERIMENT Phase */}
       <PolicyLab />
       <AIPolicyGenerator />
@@ -677,36 +669,7 @@ export function SimulationDashboard() {
       {/* EVALUATE Phase */}
       <ResultsDashboard onSaveScenario={saveScenario} />
 
-      {/* MAPS Section */}
-      <section id="maps" className="py-12 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 flex items-center justify-center border border-white/10">
-              <span className="text-lg">🗺️</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-white">Maps</h2>
-              <p className="text-sm text-white/40">
-                AQI heatmaps, emission sources, and sector-specific visualizations
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-8">
-            <AQIMaps />
-            <EmissionMaps />
-            <div className="glass-panel p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-lg">🗺️</span>
-                <h3 className="text-lg font-bold text-white">
-                  Sector-Specific Carbon Emissions
-                </h3>
-              </div>
-              <SectorMaps />
-            </div>
-          </div>
-        </div>
-      </section>
+      <DynamicSimulationMaps result={latestResult} />
 
       <ScenarioComparison />
       <PolicyHeatmap />

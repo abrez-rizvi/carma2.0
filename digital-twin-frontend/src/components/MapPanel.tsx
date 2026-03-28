@@ -37,29 +37,18 @@ export function MapPanelCard({
     loadingText = 'Loading...',
 }: MapPanelCardProps) {
     const [imgKey, setImgKey] = useState(0);
-    const [useInteractivePreview, setUseInteractivePreview] = useState(false);
+    const [useInteractivePreview, setUseInteractivePreview] = useState(true);
     const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
 
     const currentSrc = `${imageSrc}${imageSrc.includes('?') ? '&' : '?'}t=${imgKey}`;
     const interactivePreviewSrc = `${interactiveUrl}${interactiveUrl.includes('?') ? '&' : '?'}embed=1&t=${imgKey}`;
 
     useEffect(() => {
-        if (useInteractivePreview || isPreviewLoaded) {
-            return;
-        }
-
-        // PNG generation can fail or stall when headless browser dependencies are missing.
-        // Fall back to embedded interactive map so the preview panel is still usable.
-        const timeout = window.setTimeout(() => {
-            setUseInteractivePreview(true);
-            setIsPreviewLoaded(false);
-        }, 7000);
-
-        return () => window.clearTimeout(timeout);
+        // We now default to interactive preview, but keep useEffect for compatibility if needed.
     }, [useInteractivePreview, isPreviewLoaded, currentSrc]);
 
     const resetPreviewState = useCallback(() => {
-        setUseInteractivePreview(false);
+        setUseInteractivePreview(true);
         setIsPreviewLoaded(false);
     }, []);
 

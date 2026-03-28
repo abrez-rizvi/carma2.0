@@ -102,9 +102,11 @@ def add_delhi_boundary_to_map(m):
         return False
 
 
-def generate_emission_heatmap_html():
+def generate_emission_heatmap_html(sector_reductions=None):
     """Generates a Folium map with Grid Heatmap for CO2 emissions (Clipped to Delhi)."""
-    
+    if sector_reductions is None:
+        sector_reductions = {}
+        
     m = folium.Map(
         location=[DELHI_LAT, DELHI_LON], 
         zoom_start=10, 
@@ -161,9 +163,14 @@ def generate_emission_heatmap_html():
             
             # Add contribution from nearby hotspots
             for hotspot in EMISSION_HOTSPOTS:
+                sector = hotspot['sector']
+                reduction = sector_reductions.get(sector, 0.0)
+                if reduction == 0.0:
+                    reduction = sector_reductions.get(sector.replace(" ", "_"), 0.0)
+                
                 dist = ((lat - hotspot['lat'])**2 + (lon - hotspot['lon'])**2)**0.5
                 if dist < 0.05:  # ~5km radius of influence
-                    contribution = hotspot['emission'] * (1 - dist/0.05) * 0.5
+                    contribution = (hotspot['emission'] * (1 - reduction/100.0)) * (1 - dist/0.05) * 0.5
                     base_emission += contribution
             
             # Add random variation
@@ -187,15 +194,22 @@ def generate_emission_heatmap_html():
     return m.get_root().render()
 
 
-def generate_emission_hotspots_html():
+def generate_emission_hotspots_html(sector_reductions=None):
     """Generates a map with sector-wise emission sources."""
+    if sector_reductions is None:
+        sector_reductions = {}
+        
     m = folium.Map(location=[DELHI_LAT, DELHI_LON], zoom_start=11)
     
     add_delhi_boundary_to_map(m)
     
     for spot in EMISSION_HOTSPOTS:
-        emission = spot['emission']
         sector = spot['sector']
+        reduction = sector_reductions.get(sector, 0.0)
+        if reduction == 0.0:
+            reduction = sector_reductions.get(sector.replace(" ", "_"), 0.0)
+            
+        emission = spot['emission'] * (1 - reduction/100.0)
         color = SECTOR_COLORS.get(sector, "#6b7280")
         
         # Size based on emission level
@@ -236,8 +250,11 @@ def generate_emission_hotspots_html():
     return m.get_root().render()
 
 
-def generate_forecast_emission_hotspots_html(year: int):
+def generate_forecast_emission_hotspots_html(year: int, sector_reductions=None):
     """Generates emission hotspots adjusted for forecast year."""
+    if sector_reductions is None:
+        sector_reductions = {}
+        
     m = folium.Map(location=[DELHI_LAT, DELHI_LON], zoom_start=11)
     
     add_delhi_boundary_to_map(m)
@@ -266,8 +283,12 @@ def generate_forecast_emission_hotspots_html(year: int):
     print(f"Emission hotspots for {year}: scaling factor = {scaling_factor:.4f}")
     
     for spot in EMISSION_HOTSPOTS:
-        emission = spot['emission'] * scaling_factor
         sector = spot['sector']
+        reduction = sector_reductions.get(sector, 0.0)
+        if reduction == 0.0:
+            reduction = sector_reductions.get(sector.replace(" ", "_"), 0.0)
+            
+        emission = (spot['emission'] * scaling_factor) * (1 - reduction/100.0)
         color = SECTOR_COLORS.get(sector, "#6b7280")
         
         radius = 8 + (emission / 5)

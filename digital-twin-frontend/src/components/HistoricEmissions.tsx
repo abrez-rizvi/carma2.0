@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../config';
 import {
@@ -13,12 +15,16 @@ import { History } from 'lucide-react';
 import type { MonthlyData } from '../types';
 import { ChartPanel, chartTooltipStyle } from './ChartPanel';
 
+let cachedHistoricData: MonthlyData[] | null = null;
+
 export function HistoricEmissions() {
-    const [data, setData] = useState<MonthlyData[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<MonthlyData[]>(cachedHistoricData || []);
+    const [loading, setLoading] = useState(!cachedHistoricData);
 
     useEffect(() => {
-        fetchHistoricData();
+        if (!cachedHistoricData) {
+            fetchHistoricData();
+        }
     }, []);
 
     const fetchHistoricData = async () => {
@@ -27,6 +33,7 @@ export function HistoricEmissions() {
             const response = await fetch(`${API_BASE_URL}/api/emission/history/monthly`);
             const result = await response.json();
             if (result.status === 'success') {
+                cachedHistoricData = result.data;
                 setData(result.data);
             }
         } catch (e) {

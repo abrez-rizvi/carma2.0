@@ -114,7 +114,7 @@ def add_delhi_boundary_to_map(m):
         print(f"Error adding boundary: {e}")
         return False
 
-def generate_heatmap_html():
+def generate_heatmap_html(aqi_improvement_pct=0.0):
     """Generates a Folium map with Grid Heatmap (Clipped to Delhi)."""
     
     # Create base map
@@ -182,6 +182,7 @@ def generate_heatmap_html():
             # Base value + random noise - distance decay
             base_value = 450 - (dist_center * 800) 
             val = base_value + random.randint(-50, 50)
+            val = val * (1 - aqi_improvement_pct/100.0)
             val = max(50, min(500, val)) # Clamp 50-500
             
             color = get_color(val)
@@ -202,7 +203,7 @@ def generate_heatmap_html():
     return m.get_root().render()
 
 
-def generate_ward_geojson_heatmap():
+def generate_ward_geojson_heatmap(aqi_improvement_pct=0.0):
     """Generates a Ward-level AQI heatmap using the local wards.geojson file."""
     import json as _json
 
@@ -237,6 +238,7 @@ def generate_ward_geojson_heatmap():
             is_hotspot = any(h['name'].lower() in ward_name.lower() for h in BASE_HOTSPOTS)
             if is_hotspot:
                 base_aqi += 50
+            base_aqi = base_aqi * (1 - aqi_improvement_pct/100.0)
             val = min(500, max(50, base_aqi))
 
             feature['properties']['simulated_aqi'] = val
@@ -271,7 +273,7 @@ def generate_ward_geojson_heatmap():
     return m.get_root().render()
 
 
-def generate_zone_geojson_heatmap():
+def generate_zone_geojson_heatmap(aqi_improvement_pct=0.0):
     """Generates a Zone-level AQI heatmap from local zones.geojson."""
     import json as _json
 
@@ -311,6 +313,7 @@ def generate_zone_geojson_heatmap():
             is_hotspot = any(h['name'].lower() in zone_name.lower() for h in BASE_HOTSPOTS)
             if is_hotspot:
                 base_aqi += 50
+            base_aqi = base_aqi * (1 - aqi_improvement_pct/100.0)
             val = min(500, max(50, base_aqi))
 
             new_features.append({
@@ -354,7 +357,7 @@ def generate_zone_geojson_heatmap():
     return m.get_root().render()
 
 
-def generate_hotspots_html():
+def generate_hotspots_html(aqi_improvement_pct=0.0):
     """Generates the original Hotspot Map with markers."""
     m = folium.Map(location=[DELHI_LAT, DELHI_LON], zoom_start=11)
     
@@ -405,7 +408,7 @@ def generate_hotspots_html():
 
     for spot in hotspots:
         color = "gray"
-        aqi = spot['aqi']
+        aqi = int(spot['aqi'] * (1 - aqi_improvement_pct/100.0))
         if isinstance(aqi, (int, float)):
              color = "green"
              if aqi > 100: color = "yellow"
@@ -430,7 +433,7 @@ def generate_hotspots_html():
         
     return m.get_root().render()
 
-def generate_forecast_hotspots_html(year: int):
+def generate_forecast_hotspots_html(year: int, aqi_improvement_pct=0.0):
     """
     Generates a Hotspot Map with AQI values adjusted for the forecast year.
     Uses emission scaling factor to project future AQI values.
@@ -445,9 +448,8 @@ def generate_forecast_hotspots_html(year: int):
     
     # Generate adjusted hotspots
     for spot in BASE_HOTSPOTS:
-        # Apply scaling: new_aqi = base_aqi * scaling_factor
-        # The weight is already embedded in base_aqi, so we just scale by emission change
-        adjusted_aqi = int(spot['base_aqi'] * scaling_factor)
+        # Determine color based on AQI
+        adjusted_aqi = int(spot['base_aqi'] * scaling_factor * (1 - aqi_improvement_pct/100.0))
         
         # Determine color based on AQI
         color = "gray"

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { API_BASE_URL } from '../config';
 import {
@@ -19,12 +21,16 @@ interface AQITrendPoint {
     aqi_forecast?: number | null;
 }
 
+let cachedAqiTrendsData: AQITrendPoint[] | null = null;
+
 export function AQITrends() {
-    const [data, setData] = useState<AQITrendPoint[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<AQITrendPoint[]>(cachedAqiTrendsData || []);
+    const [loading, setLoading] = useState(!cachedAqiTrendsData);
 
     useEffect(() => {
-        loadData();
+        if (!cachedAqiTrendsData) {
+            loadData();
+        }
     }, []);
 
     const loadData = async () => {
@@ -71,6 +77,7 @@ export function AQITrends() {
                     combined = [...history, ...forecast];
                 }
 
+                cachedAqiTrendsData = combined;
                 setData(combined);
             }
         } catch (e) {

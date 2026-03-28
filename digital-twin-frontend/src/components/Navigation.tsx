@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
@@ -11,25 +12,22 @@ import {
   Map,
   Menu,
   X,
+  ArrowLeft,
 } from "lucide-react";
 
+import { History } from "lucide-react";
+
 const NAV_SECTIONS = [
-  { id: "baseline", label: "Baseline", icon: BarChart3 },
-  { id: "policy-lab", label: "Policy Lab", icon: FlaskConical },
-  { id: "results", label: "Results", icon: BarChart },
-  { id: "comparison", label: "Compare", icon: GitCompare },
-  { id: "maps", label: "Maps", icon: Map },
+  { id: "baseline", href: "/baseline", label: "Baseline", icon: BarChart3 },
+  { id: "historic-trends", href: "/historic-trends", label: "Historic Trends", icon: History },
+  { id: "policy-simulator", href: "/policy-simulator", label: "Policy Simulator", icon: FlaskConical },
 ];
 
-function scrollToSection(sectionId: string) {
-  const element = document.getElementById(sectionId);
-  if (element) {
-    element.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-}
+// Removed scrollToSection as we are using distinct pages now
 
 export function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
@@ -37,6 +35,13 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
+              <Image
+                src="/carma-logo.png"
+                alt="CARMA Logo"
+                width={50}
+                height={50}
+                className="drop-shadow-2xl"
+              />
             <div>
               <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
                 CARMA
@@ -51,21 +56,31 @@ export function Navigation() {
           <div className="hidden md:flex items-center gap-1">
             {NAV_SECTIONS.map((section) => {
               const Icon = section.icon;
+              const isActive = pathname === section.href;
               return (
-                <button
+                <Link
                   key={section.id}
-                  onClick={() => scrollToSection(section.id)}
-                  className="flex items-center gap-1.5 px-3 py-2 text-sm text-white/50 hover:text-white rounded-lg transition-colors hover:bg-white/5 group"
+                  href={section.href}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg transition-colors group ${isActive
+                      ? "bg-white/10 text-emerald-400"
+                      : "text-white/50 hover:text-white hover:bg-white/5"
+                    }`}
                 >
-                  <Icon className="w-4 h-4 text-white/40 group-hover:text-emerald-400 transition-colors" />
+                  <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-emerald-400" : "text-white/40 group-hover:text-emerald-400"}`} />
                   {section.label}
-                </button>
+                </Link>
               );
             })}
           </div>
 
           {/* Page Links (secondary) */}
           <div className="hidden md:flex items-center gap-3 text-xs">
+            <Link
+              href="/hyper-aqi"
+              className="text-white/30 hover:text-white/60 transition-colors px-2 py-1"
+            >
+              Hyper Local AQI
+            </Link>
             <Link
               href="/solutions"
               className="text-white/30 hover:text-white/60 transition-colors px-2 py-1"
@@ -99,21 +114,29 @@ export function Navigation() {
             <div className="space-y-1">
               {NAV_SECTIONS.map((section) => {
                 const Icon = section.icon;
+                const isActive = pathname === section.href;
                 return (
-                  <button
+                  <Link
                     key={section.id}
-                    onClick={() => {
-                      scrollToSection(section.id);
-                      setMobileOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                    href={section.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm rounded-lg transition-all ${isActive
+                        ? "bg-white/10 text-emerald-400"
+                        : "text-white/60 hover:text-white hover:bg-white/5"
+                      }`}
                   >
                     <Icon className="w-4 h-4" />
                     {section.label}
-                  </button>
+                  </Link>
                 );
               })}
               <div className="border-t border-white/5 pt-2 mt-2">
+                <Link
+                  href="/hyper-aqi"
+                  className="block px-4 py-3 text-sm text-white/40 hover:text-white/60"
+                >
+                  Hyper Local AQI
+                </Link>
                 <Link
                   href="/solutions"
                   className="block px-4 py-3 text-sm text-white/40 hover:text-white/60"

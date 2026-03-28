@@ -44,7 +44,7 @@ export function CityScenarioBar({ onRunSimulation }: CityScenarioBarProps) {
   return (
     <section
       id="control-bar"
-      className="sticky top-20 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl"
+      className="sticky top-15 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl"
     >
       <div className="max-w-7xl mx-auto px-6 py-4">
         <div className="flex flex-wrap items-center gap-6">

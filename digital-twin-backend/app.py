@@ -36,6 +36,8 @@ register_aqi_routes(app)
 register_emission_routes(app)
 from aqi_history import register_aqi_history_routes
 register_aqi_history_routes(app)
+from ward_analysis import register_ward_routes
+register_ward_routes(app)
 
 # Pre-initialize AQI Data & Model to prevent timeout on first request
 from aqi_history import get_aqi_history
@@ -58,26 +60,46 @@ EMISSION_HOTSPOTS_PATH = os.path.join(STATIC_DIR, 'emission_map_hotspots.png')
 # Default map path (alias to heatmap for backward compat)
 MAP_IMAGE_PATH = HEATMAP_PATH 
 
+def get_map_query_params():
+    aqi_imp = request.args.get('aqi_improvement_pct', default=0.0, type=float)
+    sectors = ['Industry', 'Transport', 'Power', 'Residential', 'Aviation', 'Commercial', 'Ground_Transport']
+    sector_reds = {}
+    for s in sectors:
+        val = request.args.get(s, default=0.0, type=float)
+        if val == 0.0:
+            val = request.args.get(s.replace(" ", "_"), default=0.0, type=float)
+        if val != 0.0:
+            sector_reds[s] = val
+    
+    # Ground_Transport mapped to Transport
+    if 'Ground_Transport' in sector_reds and 'Transport' not in sector_reds:
+        sector_reds['Transport'] = sector_reds['Ground_Transport']
+        
+    return aqi_imp, sector_reds
+
 @app.route('/api/aqi-map', methods=['GET'])
 def get_aqi_map_html():
     """Returns the Interactive Heatmap HTML (Default)"""
-    return generate_heatmap_html()
+    aqi_imp, _ = get_map_query_params()
+    return generate_heatmap_html(aqi_imp)
 
 @app.route('/api/aqi-map/heatmap', methods=['GET'])
 def get_heatmap_html():
     """Explicit endpoint for Heatmap HTML"""
-    return generate_heatmap_html()
+    aqi_imp, _ = get_map_query_params()
+    return generate_heatmap_html(aqi_imp)
 
 @app.route('/api/aqi-map/hotspots', methods=['GET'])
 def get_hotspots_html():
     """Returns the Interactive Hotspots HTML. Accepts optional 'year' param for forecast."""
     year = request.args.get('year', type=int)
+    aqi_imp, _ = get_map_query_params()
     
     # Validate year if provided
     if year and year in [2026, 2027, 2028]:
-        return generate_forecast_hotspots_html(year)
+        return generate_forecast_hotspots_html(year, aqi_imp)
     
-    return generate_hotspots_html()
+    return generate_hotspots_html(aqi_imp)
 
 @app.route('/api/aqi-map.png', methods=['GET'])
 def get_aqi_map_png():
@@ -88,11 +110,16 @@ def get_aqi_map_png():
 def get_heatmap_png():
     """Returns the Heatmap Grid PNG"""
     from flask import send_file
+    aqi_imp, _ = get_map_query_params()
     
     # Simple caching/regeneration logic
-    if not os.path.exists(HEATMAP_PATH) or request.args.get('refresh'):
-        html = generate_heatmap_html()
-        render_map_to_png(html, HEATMAP_PATH)
+    is_custom = aqi_imp > 0
+    if is_custom or not os.path.exists(HEATMAP_PATH) or request.args.get('refresh'):
+        html = generate_heatmap_html(aqi_imp)
+        path = HEATMAP_PATH if not is_custom else os.path.join(STATIC_DIR, f'heatmap_custom_{aqi_imp}.png')
+        if not os.path.exists(path) or request.args.get('refresh'):
+             render_map_to_png(html, path)
+        return send_file(path, mimetype='image/png')
         
     return send_file(HEATMAP_PATH, mimetype='image/png')
 
@@ -102,6 +129,8 @@ def get_hotspots_png():
     from flask import send_file
     
     year = request.args.get('year', type=int)
+    aqi_imp, _ = get_map_query_params()
+    is_custom = aqi_imp > 0
     
     # Validate year if provided
     if year and year not in [2026, 2027, 2028]:
@@ -109,16 +138,20 @@ def get_hotspots_png():
     
     if year:
         # Generate forecast-based hotspots for the selected year
-        cache_path = os.path.join(STATIC_DIR, f'aqi_map_hotspots_{year}.png')
+        cache_path = os.path.join(STATIC_DIR, f'aqi_map_hotspots_{year}{f"_custom_{aqi_imp}" if is_custom else ""}.png')
         if not os.path.exists(cache_path) or request.args.get('refresh'):
-            html = generate_forecast_hotspots_html(year)
+            html = generate_forecast_hotspots_html(year, aqi_imp)
             render_map_to_png(html, cache_path)
         return send_file(cache_path, mimetype='image/png')
     else:
         # Original baseline hotspots
-        if not os.path.exists(HOTSPOTS_PATH) or request.args.get('refresh'):
-            html = generate_hotspots_html()
-            render_map_to_png(html, HOTSPOTS_PATH)
+        cache_path = os.path.join(STATIC_DIR, f'aqi_map_hotspots_base{f"_custom_{aqi_imp}" if is_custom else ""}.png')
+        if is_custom or not os.path.exists(HOTSPOTS_PATH) or request.args.get('refresh'):
+            html = generate_hotspots_html(aqi_imp)
+            path = HOTSPOTS_PATH if not is_custom else cache_path
+            if not os.path.exists(path) or request.args.get('refresh'):
+                 render_map_to_png(html, path)
+            return send_file(path, mimetype='image/png')
         return send_file(HOTSPOTS_PATH, mimetype='image/png')
 
 # Ward/Zone GeoJSON map paths
@@ -128,30 +161,40 @@ ZONE_GEOJSON_PATH = os.path.join(STATIC_DIR, 'aqi_map_zone_geojson.png')
 @app.route('/api/aqi-map/ward-geojson', methods=['GET'])
 def get_ward_geojson_html():
     """Returns the Interactive Ward GeoJSON Heatmap HTML"""
-    return generate_ward_geojson_heatmap()
+    aqi_imp, _ = get_map_query_params()
+    return generate_ward_geojson_heatmap(aqi_imp)
 
 @app.route('/api/aqi-map/ward-geojson.png', methods=['GET'])
 def get_ward_geojson_png():
     """Returns the Ward GeoJSON Heatmap PNG"""
     from flask import send_file
-    if not os.path.exists(WARD_GEOJSON_PATH) or request.args.get('refresh'):
-        html = generate_ward_geojson_heatmap()
-        render_map_to_png(html, WARD_GEOJSON_PATH)
-    return send_file(WARD_GEOJSON_PATH, mimetype='image/png')
+    aqi_imp, _ = get_map_query_params()
+    
+    path = WARD_GEOJSON_PATH if aqi_imp == 0 else os.path.join(STATIC_DIR, f'ward_geojson_{aqi_imp}.png')
+    if aqi_imp > 0 or not os.path.exists(path) or request.args.get('refresh'):
+        html = generate_ward_geojson_heatmap(aqi_imp)
+        if not os.path.exists(path) or request.args.get('refresh'):
+            render_map_to_png(html, path)
+    return send_file(path, mimetype='image/png')
 
 @app.route('/api/aqi-map/zone-geojson', methods=['GET'])
 def get_zone_geojson_html():
     """Returns the Interactive Zone GeoJSON Heatmap HTML"""
-    return generate_zone_geojson_heatmap()
+    aqi_imp, _ = get_map_query_params()
+    return generate_zone_geojson_heatmap(aqi_imp)
 
 @app.route('/api/aqi-map/zone-geojson.png', methods=['GET'])
 def get_zone_geojson_png():
     """Returns the Zone GeoJSON Heatmap PNG"""
     from flask import send_file
-    if not os.path.exists(ZONE_GEOJSON_PATH) or request.args.get('refresh'):
-        html = generate_zone_geojson_heatmap()
-        render_map_to_png(html, ZONE_GEOJSON_PATH)
-    return send_file(ZONE_GEOJSON_PATH, mimetype='image/png')
+    aqi_imp, _ = get_map_query_params()
+    
+    path = ZONE_GEOJSON_PATH if aqi_imp == 0 else os.path.join(STATIC_DIR, f'zone_geojson_{aqi_imp}.png')
+    if aqi_imp > 0 or not os.path.exists(path) or request.args.get('refresh'):
+        html = generate_zone_geojson_heatmap(aqi_imp)
+        if not os.path.exists(path) or request.args.get('refresh'):
+            render_map_to_png(html, path)
+    return send_file(path, mimetype='image/png')
 
 # ============================================================================
 # EMISSION MAPS - CO2 Visualization
@@ -160,22 +203,25 @@ def get_zone_geojson_png():
 @app.route('/api/emission-map', methods=['GET'])
 def get_emission_map_html():
     """Returns the Interactive Emission Heatmap HTML (Default)"""
-    return generate_emission_heatmap_html()
+    _, sector_reds = get_map_query_params()
+    return generate_emission_heatmap_html(sector_reds)
 
 @app.route('/api/emission-map/heatmap', methods=['GET'])
 def get_emission_heatmap_html():
     """Explicit endpoint for Emission Heatmap HTML"""
-    return generate_emission_heatmap_html()
+    _, sector_reds = get_map_query_params()
+    return generate_emission_heatmap_html(sector_reds)
 
 @app.route('/api/emission-map/hotspots', methods=['GET'])
 def get_emission_hotspots_html():
     """Returns the Interactive Emission Hotspots HTML. Accepts optional 'year' param."""
     year = request.args.get('year', type=int)
+    _, sector_reds = get_map_query_params()
     
     if year and year in [2026, 2027, 2028]:
-        return generate_forecast_emission_hotspots_html(year)
+        return generate_forecast_emission_hotspots_html(year, sector_reds)
     
-    return generate_emission_hotspots_html()
+    return generate_emission_hotspots_html(sector_reds)
 
 @app.route('/api/emission-map/heatmap.png', methods=['GET'])
 def get_emission_heatmap_png():
